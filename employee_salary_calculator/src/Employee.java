@@ -34,4 +34,14 @@ public class Employee {
         System.out.println("Basic Salary: " + basicSalary);
     }
 
+    public void displayDetails() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'displayDetails'");
+    }
+
+    public void setDetails(String name2, double salary, String department2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setDetails'");
+    }
+
 }
