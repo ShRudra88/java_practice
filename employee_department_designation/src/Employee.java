@@ -6,7 +6,7 @@ public class Employee {
     private double salary;
 
     private Department department;
-    private Designation designation;
+    private Designation designation; //instance
 
     // Constructor
     public Employee(int employeeId, String employeeName,
