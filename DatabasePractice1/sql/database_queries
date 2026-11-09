@@ -1,0 +1,299 @@
+# SQL QUICK REVISION NOTES
+## Oracle Database | TOAD for Oracle
+
+**Practice Database:** HR_PRACTICE  
+**Tables:** DEPARTMENTS, EMPLOYEES
+
+---
+
+## 1. Database & RDBMS
+
+- **Database:** Organized collection of data.
+- **DBMS:** Software used to manage databases.
+- **RDBMS:** Stores data in related tables.
+
+Examples: Oracle, MySQL, PostgreSQL.
+
+## 2. Relational Database
+
+- **Table:** Data organized into rows and columns.
+- **Row:** One record.
+- **Column:** One field.
+- **Relationship:** Connection between tables.
+
+**Relationship types:**
+- One-to-One (1:1)
+- One-to-Many (1:N)
+- Many-to-Many (M:N)
+
+Example: One department can have many employees.
+
+## 3. Common Oracle Data Types
+
+| Data Type | Purpose |
+|---|---|
+| NUMBER | Numeric values |
+| VARCHAR2(50) | Variable-length text |
+| CHAR(1) | Fixed-length text |
+| DATE | Date and time |
+| TIMESTAMP | Precise date and time |
+| CLOB | Large text |
+| BLOB | Binary data |
+
+## 4. Primary Key & Foreign Key
+
+**Primary Key (PK):**
+- Uniquely identifies each record.
+- Cannot be NULL or duplicate.
+
+**Foreign Key (FK):**
+- Connects two tables.
+- References a primary or unique key in another table.
+- Can contain duplicate values.
+
+Example:
+- DEPARTMENTS.DEPARTMENT_ID = PK
+- EMPLOYEES.EMPLOYEE_ID = PK
+- EMPLOYEES.DEPARTMENT_ID = FK
+
+## 5. SQL Command Categories
+
+| Category | Commands | Purpose |
+|---|---|---|
+| DDL | CREATE, ALTER, DROP, TRUNCATE | Structure |
+| DML | INSERT, UPDATE, DELETE | Modify data |
+| DQL | SELECT | Retrieve data |
+| DCL | GRANT, REVOKE | Permissions |
+| TCL | COMMIT, ROLLBACK, SAVEPOINT | Transactions |
+
+## 6. CREATE TABLE
+
+Creates a new table.
+
+```sql
+CREATE TABLE DEPARTMENTS (
+    DEPARTMENT_ID NUMBER(5) PRIMARY KEY,
+    DEPARTMENT_NAME VARCHAR2(50),
+    LOCATION VARCHAR2(50)
+);
+```
+
+## 7. SELECT
+
+Retrieves data.
+
+```sql
+-- All columns
+SELECT * FROM EMPLOYEES;
+
+-- Specific columns
+SELECT FIRST_NAME, SALARY
+FROM EMPLOYEES;
+
+-- Unique values
+SELECT DISTINCT DEPARTMENT_ID
+FROM EMPLOYEES;
+```
+
+## 8. INSERT
+
+Adds new records.
+
+```sql
+INSERT INTO DEPARTMENTS
+(DEPARTMENT_ID, DEPARTMENT_NAME, LOCATION)
+VALUES (60, 'Support', 'Dhaka');
+
+COMMIT;
+```
+
+## 9. UPDATE
+
+Modifies existing records.
+
+```sql
+UPDATE EMPLOYEES
+SET SALARY = 50000
+WHERE EMPLOYEE_ID = 101;
+
+COMMIT;
+```
+
+**Remember:** Always use WHERE when updating specific records.
+
+## 10. DELETE
+
+Removes records.
+
+```sql
+DELETE FROM EMPLOYEES
+WHERE EMPLOYEE_ID = 101;
+
+COMMIT;
+```
+
+Without WHERE, all employee records will be deleted.
+
+## 11. WHERE
+
+Filters records based on conditions.
+
+```sql
+-- Greater than
+SELECT * FROM EMPLOYEES
+WHERE SALARY > 40000;
+
+-- Between
+SELECT * FROM EMPLOYEES
+WHERE SALARY BETWEEN 30000 AND 50000;
+
+-- Multiple values
+SELECT * FROM EMPLOYEES
+WHERE DEPARTMENT_ID IN (10, 20);
+
+-- Pattern matching
+SELECT * FROM EMPLOYEES
+WHERE FIRST_NAME LIKE 'S%';
+
+-- NULL checking
+SELECT * FROM EMPLOYEES
+WHERE EMAIL IS NULL;
+```
+
+**Operators:**
+- `=` Equal
+- `>` Greater than
+- `<` Less than
+- `>=` Greater than or equal
+- `<=` Less than or equal
+- `<>` Not equal
+- `AND`, `OR`, `NOT`
+
+## 12. ORDER BY
+
+Sorts query results.
+
+```sql
+-- Ascending
+SELECT * FROM EMPLOYEES
+ORDER BY SALARY ASC;
+
+-- Descending
+SELECT * FROM EMPLOYEES
+ORDER BY SALARY DESC;
+```
+
+- ASC = Lowest to highest.
+- DESC = Highest to lowest.
+
+## 13. GROUP BY
+
+Groups records with the same values.
+
+```sql
+SELECT DEPARTMENT_ID,
+       COUNT(*) AS TOTAL_EMPLOYEES
+FROM EMPLOYEES
+GROUP BY DEPARTMENT_ID;
+```
+
+Common aggregate functions:
+
+| Function | Purpose |
+|---|---|
+| COUNT() | Count records |
+| SUM() | Total |
+| AVG() | Average |
+| MAX() | Highest |
+| MIN() | Lowest |
+
+## 14. HAVING
+
+Filters grouped results.
+
+```sql
+SELECT DEPARTMENT_ID,
+       AVG(SALARY) AS AVG_SALARY
+FROM EMPLOYEES
+GROUP BY DEPARTMENT_ID
+HAVING AVG(SALARY) > 40000;
+```
+
+**WHERE:** Filters rows.  
+**HAVING:** Filters groups.
+
+## 15. JOIN
+
+Combines records from related tables.
+
+```sql
+SELECT E.FIRST_NAME,
+       D.DEPARTMENT_NAME
+FROM EMPLOYEES E
+INNER JOIN DEPARTMENTS D
+ON E.DEPARTMENT_ID = D.DEPARTMENT_ID;
+```
+
+Common JOIN types:
+- INNER JOIN: Matching records only.
+- LEFT JOIN: All left-table records and matching right-table records.
+- RIGHT JOIN: All right-table records and matching left-table records.
+- FULL OUTER JOIN: All records from both tables.
+
+## 16. DELETE vs TRUNCATE vs DROP
+
+| Command | Meaning |
+|---|---|
+| DELETE | Removes selected rows |
+| TRUNCATE | Removes all rows |
+| DROP | Removes the entire table |
+
+TRUNCATE and DROP are DDL operations and generally cannot be rolled back.
+
+## 17. Useful TOAD Commands
+
+| Action | Command |
+|---|---|
+| Execute current SQL | F9 |
+| Execute SQL script | F5 |
+| Show table structure | DESC EMPLOYEES |
+| Show all tables | SELECT * FROM USER_TABLES |
+| Check current user | SELECT USER FROM DUAL |
+| Save changes | COMMIT |
+| Undo uncommitted changes | ROLLBACK |
+
+## 18. Important SQL Execution Order
+
+Logical processing order:
+
+1. FROM
+2. WHERE
+3. GROUP BY
+4. HAVING
+5. SELECT
+6. ORDER BY
+7. FETCH / OFFSET
+
+---
+
+## QUICK REVISION SUMMARY
+
+| Topic | Main Purpose |
+|---|---|
+| CREATE | Create table |
+| SELECT | Read data |
+| INSERT | Add data |
+| UPDATE | Modify data |
+| DELETE | Remove data |
+| WHERE | Filter records |
+| ORDER BY | Sort records |
+| GROUP BY | Group records |
+| HAVING | Filter groups |
+| JOIN | Connect tables |
+| COMMIT | Save changes |
+| ROLLBACK | Undo uncommitted changes |
+
+**Practice Schema:** HR_PRACTICE  
+**Practice Tables:** DEPARTMENTS and EMPLOYEES
+
+**Goal:** Understand database relationships and confidently write basic Oracle SQL queries.
