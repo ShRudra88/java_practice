@@ -1,0 +1,251 @@
+# Database Relationships and ER Diagram – Quick Documentation
+
+## 1. What is an ER Diagram?
+
+ER Diagram (Entity Relationship Diagram) is a visual representation of a database.
+
+It shows:
+- Entities (Tables)
+- Attributes (Columns)
+- Primary Keys (PK)
+- Foreign Keys (FK)
+- Relationships between tables
+
+**Example:** An HR database contains Employees, Departments, and Designations.
+
+## 2. What is an Entity?
+
+An entity represents a real-world object or subject. In a database, an entity becomes a table.
+
+Examples:
+- EMPLOYEES
+- DEPARTMENTS
+- DESIGNATIONS
+- ITEMS
+- SUPPLIERS
+
+## 3. What is an Attribute?
+
+An attribute describes an entity. In a database, an attribute becomes a column.
+
+Example:
+
+EMPLOYEES table:
+- EMPLOYEE_ID
+- FIRST_NAME
+- LAST_NAME
+- EMAIL
+- SALARY
+- DEPARTMENT_ID
+
+## 4. Primary Key (PK)
+
+A Primary Key uniquely identifies each record in a table.
+
+Example:
+- EMPLOYEE_ID in EMPLOYEES
+- DEPARTMENT_ID in DEPARTMENTS
+
+Rules:
+- Must be unique.
+- Cannot contain NULL.
+- Each table should have a primary key.
+
+## 5. Foreign Key (FK)
+
+A Foreign Key connects one table to another table.
+
+Example:
+
+DEPARTMENTS:
+- DEPARTMENT_ID (PK)
+- DEPARTMENT_NAME
+
+EMPLOYEES:
+- EMPLOYEE_ID (PK)
+- FIRST_NAME
+- DEPARTMENT_ID (FK)
+
+Here, EMPLOYEES.DEPARTMENT_ID references DEPARTMENTS.DEPARTMENT_ID.
+
+## 6. Types of Database Relationships
+
+### A. One-to-One (1:1)
+
+One record in Table A is related to only one record in Table B, and vice versa.
+
+Example:
+- One employee has one employee profile.
+- One employee profile belongs to one employee.
+
+### B. One-to-Many (1:M)
+
+One record in Table A can be related to many records in Table B.
+
+Example:
+- One department has many employees.
+- Each employee belongs to one department.
+
+This is one of the most common database relationships.
+
+### C. Many-to-Many (M:N)
+
+Many records in Table A can be related to many records in Table B.
+
+Example:
+- One purchase order can contain many items.
+- One item can appear in many purchase orders.
+
+**Solution:** Create a junction (bridge) table.
+
+Example:
+- PURCHASE_ORDERS
+- ITEMS
+- PURCHASE_ORDER_ITEMS (junction table)
+
+PURCHASE_ORDER_ITEMS contains:
+- ORDER_ITEM_ID (PK)
+- ORDER_ID (FK)
+- ITEM_ID (FK)
+- QUANTITY
+- UNIT_PRICE
+
+This converts a many-to-many relationship into two one-to-many relationships.
+
+## 7. Relationship Symbols (Crow's Foot)
+
+Common ER diagram symbols:
+
+- `||` = Exactly one
+- `o|` = Zero or one
+- `|{` = One or many
+- `o{` = Zero or many
+
+Examples:
+- `DEPARTMENTS ||--o{ EMPLOYEES` means one department can have zero or many employees.
+- `ITEMS ||--o{ STOCK_TRANSACTIONS` means one item can have zero or many stock transactions.
+
+## 8. HR Database Relationships
+
+Example tables:
+1. DEPARTMENTS
+2. DESIGNATIONS
+3. EMPLOYEES
+
+Relationships:
+
+- DEPARTMENTS → EMPLOYEES = One-to-Many
+- DESIGNATIONS → EMPLOYEES = One-to-Many
+
+Example structure:
+
+DEPARTMENTS:
+- DEPARTMENT_ID (PK)
+- DEPARTMENT_NAME
+
+DESIGNATIONS:
+- DESIGNATION_ID (PK)
+- DESIGNATION_NAME
+
+EMPLOYEES:
+- EMPLOYEE_ID (PK)
+- FIRST_NAME
+- DEPARTMENT_ID (FK)
+- DESIGNATION_ID (FK)
+
+## 9. Inventory Database Relationships
+
+Example tables:
+1. CATEGORIES
+2. ITEMS
+3. SUPPLIERS
+4. PURCHASE_ORDERS
+5. PURCHASE_ORDER_ITEMS
+6. ASSET_ASSIGNMENTS
+
+Relationships:
+
+- CATEGORIES → ITEMS = One-to-Many
+- SUPPLIERS → PURCHASE_ORDERS = One-to-Many
+- PURCHASE_ORDERS → PURCHASE_ORDER_ITEMS = One-to-Many
+- ITEMS → PURCHASE_ORDER_ITEMS = One-to-Many
+- EMPLOYEES → ASSET_ASSIGNMENTS = One-to-Many
+- ITEMS → ASSET_ASSIGNMENTS = One-to-Many
+
+## 10. Steps to Create an ER Diagram
+
+1. Understand the project requirements.
+2. Identify all entities (tables).
+3. Identify attributes (columns) for each entity.
+4. Select a Primary Key for every table.
+5. Identify Foreign Keys.
+6. Determine relationships between tables.
+7. Define cardinality (1:1, 1:M, M:N).
+8. Resolve M:N relationships using junction tables.
+9. Draw the ER diagram.
+10. Review the design and check for duplicate data.
+
+## 11. What is Cardinality?
+
+Cardinality describes how many records in one table can be associated with records in another table.
+
+Types:
+- One-to-One (1:1)
+- One-to-Many (1:M)
+- Many-to-Many (M:N)
+
+## 12. What is Normalization?
+
+Normalization is the process of organizing database tables to reduce duplicate data and improve consistency.
+
+- **1NF:** Each column contains atomic (single) values.
+- **2NF:** No partial dependency on part of a composite primary key.
+- **3NF:** No transitive dependency; non-key columns depend on the key, the whole key, and nothing but the key.
+
+## 13. Important SQL Example
+
+Create a foreign key relationship:
+
+```sql
+CREATE TABLE EMPLOYEES (
+    EMPLOYEE_ID NUMBER PRIMARY KEY,
+    FIRST_NAME VARCHAR2(50),
+    DEPARTMENT_ID NUMBER,
+    CONSTRAINT FK_EMP_DEPT
+    FOREIGN KEY (DEPARTMENT_ID)
+    REFERENCES DEPARTMENTS(DEPARTMENT_ID)
+);
+```
+
+This connects EMPLOYEES to DEPARTMENTS.
+
+## 14. Important Terms for Revision
+
+| Term | Meaning |
+|---|---|
+| ERD | Entity Relationship Diagram |
+| Entity | Database table |
+| Attribute | Table column |
+| PK | Primary Key |
+| FK | Foreign Key |
+| 1:1 | One-to-One |
+| 1:M | One-to-Many |
+| M:N | Many-to-Many |
+| Junction Table | Connects two tables in an M:N relationship |
+| Cardinality | Number of related records |
+| Normalization | Reducing duplicate data |
+
+## 15. Quick Revision
+
+- ER Diagram = Visual database design.
+- Entity = Table.
+- Attribute = Column.
+- PK = Unique record identifier.
+- FK = Connects tables.
+- 1:1 = One record relates to one record.
+- 1:M = One record relates to many records.
+- M:N = Many records relate to many records.
+- Junction Table = Resolves M:N relationships.
+- Normalization = Reduces duplicate data.
+
+**Remember:** Design the ER diagram first, then create database tables, define primary and foreign keys, insert data, and test relationships using SQL JOINs.

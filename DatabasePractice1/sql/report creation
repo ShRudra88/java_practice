@@ -1,0 +1,113 @@
+# Employee and Department Reports – Oracle SQL
+
+## 1. Database Tables
+
+We use two main tables:
+
+**EMPLOYEES**
+- EMPLOYEE_ID – Primary Key
+- FIRST_NAME
+- LAST_NAME
+- EMAIL
+- SALARY
+- HIRE_DATE
+- DEPARTMENT_ID – Department reference
+
+**DEPARTMENTS**
+- DEPARTMENT_ID – Primary Key
+- DEPARTMENT_NAME
+- LOCATION
+
+**Relationship:** EMPLOYEES.DEPARTMENT_ID connects to DEPARTMENTS.DEPARTMENT_ID.
+
+## 2. Employee Report
+
+Displays employee information along with department name and location.
+
+```sql
+SELECT
+    e.EMPLOYEE_ID,
+    e.FIRST_NAME,
+    e.LAST_NAME,
+    e.EMAIL,
+    e.SALARY,
+    e.HIRE_DATE,
+    d.DEPARTMENT_NAME,
+    d.LOCATION
+FROM EMPLOYEES e
+LEFT JOIN DEPARTMENTS d
+ON e.DEPARTMENT_ID = d.DEPARTMENT_ID
+ORDER BY e.EMPLOYEE_ID;
+```
+
+## 3. Department Report
+
+Displays department information, total employees, and total salary expenses.
+
+```sql
+SELECT
+    d.DEPARTMENT_ID,
+    d.DEPARTMENT_NAME,
+    d.LOCATION,
+    COUNT(e.EMPLOYEE_ID) AS TOTAL_EMPLOYEES,
+    NVL(SUM(e.SALARY), 0) AS TOTAL_SALARY
+FROM DEPARTMENTS d
+LEFT JOIN EMPLOYEES e
+ON d.DEPARTMENT_ID = e.DEPARTMENT_ID
+GROUP BY
+    d.DEPARTMENT_ID,
+    d.DEPARTMENT_NAME,
+    d.LOCATION
+ORDER BY d.DEPARTMENT_ID;
+```
+
+## 4. Important SQL Concepts
+
+| Concept | Purpose |
+|---|---|
+| SELECT | Selects columns |
+| FROM | Specifies the table |
+| JOIN | Combines tables |
+| ON | Defines matching conditions |
+| LEFT JOIN | Returns all left-table records |
+| COUNT() | Counts records |
+| SUM() | Calculates total |
+| NVL() | Replaces NULL with another value |
+| GROUP BY | Groups records |
+| ORDER BY | Sorts results |
+| AS | Creates a column alias |
+
+## 5. How the Reports Work
+
+1. SELECT chooses the required columns.
+2. FROM identifies the main table.
+3. LEFT JOIN combines employee and department information.
+4. ON matches the Department IDs.
+5. COUNT() counts employees in each department.
+6. SUM() calculates total department salary.
+7. GROUP BY creates department-wise groups.
+8. ORDER BY sorts the report.
+
+## 6. Export Reports in Oracle SQL Developer
+
+1. Open SQL Developer.
+2. Connect to HR_PRACTICE.
+3. Open SQL Worksheet.
+4. Paste the report query.
+5. Press Ctrl + Enter.
+6. Right-click the Query Result grid.
+7. Select Export.
+8. Choose Excel (.xlsx) or PDF.
+9. Select the destination and click Finish.
+
+## 7. Key Points to Remember
+
+- JOIN combines related tables.
+- LEFT JOIN keeps all records from the left table.
+- ON defines the relationship between tables.
+- GROUP BY is used with aggregate functions.
+- COUNT() counts employees.
+- SUM() calculates total salary.
+- NVL() handles NULL values.
+
+**Practice:** Try creating employee details, department-wise employee count, and department-wise salary reports independently.
