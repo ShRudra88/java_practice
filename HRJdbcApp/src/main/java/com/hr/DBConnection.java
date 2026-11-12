@@ -12,7 +12,7 @@ public class DBConnection {
 
     private static final String USERNAME = "HR_PRACTICE";
 
-    private static final String PASSWORD = "HrPractice#2026"; // pass removed for security reasons
+    private static final String PASSWORD = ""; // pass removed for security reasons
 
     public static Connection getConnection() throws SQLException {
 
