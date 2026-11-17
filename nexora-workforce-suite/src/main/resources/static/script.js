@@ -97,7 +97,7 @@ function displayEmployees(employees) {
             employee.id,
             `${employee.firstName} ${employee.lastName}`,
             employee.email,
-            employee.department || "",
+            employee.department?.name || employee.department || "",
             employee.jobTitle || "",
             employee.salary ?? "",
             employee.status || ""
@@ -137,7 +137,8 @@ function editEmployee(employee) {
     document.getElementById("lastName").value = employee.lastName;
     document.getElementById("email").value = employee.email;
     document.getElementById("phone").value = employee.phone || "";
-    document.getElementById("department").value = employee.department || "";
+    document.getElementById("department").value =
+        employee.department?.name || employee.department || "";
     document.getElementById("jobTitle").value = employee.jobTitle || "";
     document.getElementById("salary").value = employee.salary ?? "";
     document.getElementById("hireDate").value = employee.hireDate || "";

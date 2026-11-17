@@ -3,6 +3,7 @@ package com.nexora.workforce.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.time.LocalDate;
 
 @Entity
@@ -10,7 +11,12 @@ import java.time.LocalDate;
 public class Employee {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "employees_seq")
+    @SequenceGenerator(
+            name = "employees_seq",
+            sequenceName = "NEXORA_EMPLOYEES_SEQ",
+            allocationSize = 1)
+    @Column(name = "EMPLOYEE_ID")
     private Long id;
 
     @NotBlank
@@ -28,7 +34,13 @@ public class Employee {
 
     private String phone;
 
-    private String department;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "DEPARTMENT_ID")
+    @JsonDeserialize(using = DepartmentReferenceDeserializer.class)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({
+            "employees", "hibernateLazyInitializer", "handler"
+    })
+    private Department department;
 
     private String jobTitle;
 
@@ -82,11 +94,11 @@ public class Employee {
         this.phone = phone;
     }
 
-    public String getDepartment() {
+    public Department getDepartment() {
         return department;
     }
 
-    public void setDepartment(String department) {
+    public void setDepartment(Department department) {
         this.department = department;
     }
 

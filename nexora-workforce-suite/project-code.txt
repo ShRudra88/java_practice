@@ -1,0 +1,671 @@
+﻿
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\NexoraWorkforceSuiteApplication.java
+========================================
+package com.nexora.workforce;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class NexoraWorkforceSuiteApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(
+            NexoraWorkforceSuiteApplication.class, args
+        );
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\controller\DepartmentController.java
+========================================
+package com.nexora.workforce.controller;
+
+import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.service.DepartmentService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/departments")
+public class DepartmentController {
+
+    private final DepartmentService service;
+
+    public DepartmentController(DepartmentService service) {
+        this.service = service;
+    }
+
+    @PostMapping
+    public ResponseEntity<Department> createDepartment(
+            @Valid @RequestBody Department department) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(service.createDepartment(department));
+    }
+
+    @GetMapping
+    public List<Department> getAllDepartments() {
+        return service.getAllDepartments();
+    }
+
+    @GetMapping("/{id}")
+    public Department getDepartmentById(@PathVariable Long id) {
+        return service.getDepartmentById(id);
+    }
+
+    @PutMapping("/{departmentId}/employees/{employeeId}")
+    public Employee assignEmployee(
+            @PathVariable Long departmentId,
+            @PathVariable Long employeeId) {
+        return service.assignEmployee(departmentId, employeeId);
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\controller\EmployeeController.java
+========================================
+
+package com.nexora.workforce.controller;
+
+import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.service.EmployeeService;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/employees")
+public class EmployeeController {
+
+    private final EmployeeService service;
+
+    public EmployeeController(EmployeeService service) {
+        this.service = service;
+    }
+
+    // CREATE EMPLOYEE
+    @PostMapping
+    public ResponseEntity<Employee> createEmployee(
+            @Valid @RequestBody Employee employee) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(service.createEmployee(employee));
+    }
+
+    // GET ALL EMPLOYEES
+    @GetMapping
+    public List<Employee> getAllEmployees() {
+        return service.getAllEmployees();
+    }
+
+    // GET EMPLOYEE BY ID
+    @GetMapping("/{id}")
+    public Employee getEmployeeById(@PathVariable Long id) {
+        return service.getEmployeeById(id);
+    }
+
+    // UPDATE EMPLOYEE
+    @PutMapping("/{id}")
+    public Employee updateEmployee(
+            @PathVariable Long id,
+            @Valid @RequestBody Employee employee) {
+
+        return service.updateEmployee(id, employee);
+    }
+
+    // DELETE EMPLOYEE
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteEmployee(
+            @PathVariable Long id) {
+
+        service.deleteEmployee(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // SEARCH EMPLOYEE
+    @GetMapping("/search")
+    public List<Employee> searchEmployees(
+            @RequestParam String name) {
+
+        return service.searchEmployees(name);
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\entity\Department.java
+========================================
+package com.nexora.workforce.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "DEPARTMENTS")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+public class Department {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "departments_seq")
+    @SequenceGenerator(
+            name = "departments_seq",
+            sequenceName = "NEXORA_DEPARTMENTS_SEQ",
+            allocationSize = 1)
+    @Column(name = "DEPARTMENT_ID")
+    private Long id;
+
+    @NotBlank
+    @Column(name = "DEPARTMENT_NAME", nullable = false)
+    private String name;
+
+    @OneToMany(mappedBy = "department", fetch = FetchType.LAZY)
+    private List<Employee> employees = new ArrayList<>();
+
+    public Department() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<Employee> getEmployees() {
+        return employees;
+    }
+
+    public void setEmployees(List<Employee> employees) {
+        this.employees = employees;
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\entity\DepartmentReferenceDeserializer.java
+========================================
+package com.nexora.workforce.entity;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
+
+public class DepartmentReferenceDeserializer extends JsonDeserializer<Department> {
+
+    @Override
+    public Department deserialize(JsonParser parser, DeserializationContext context)
+            throws IOException {
+        JsonNode node = parser.getCodec().readTree(parser);
+        Department department = new Department();
+
+        if (node.isTextual()) {
+            department.setName(node.textValue());
+            return department;
+        }
+
+        if (!node.isObject()) {
+            throw JsonMappingException.from(
+                    parser, "department must be a department name or an object");
+        }
+
+        JsonNode id = node.get("id");
+        if (id != null && !id.isNull()) {
+            if (!id.canConvertToLong()) {
+                throw JsonMappingException.from(parser, "department id must be a number");
+            }
+            department.setId(id.longValue());
+        }
+
+        JsonNode name = node.get("name");
+        if (name != null && !name.isNull()) {
+            if (!name.isTextual()) {
+                throw JsonMappingException.from(parser, "department name must be a string");
+            }
+            department.setName(name.textValue());
+        }
+
+        return department;
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\entity\Employee.java
+========================================
+
+package com.nexora.workforce.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "EMPLOYEES")
+public class Employee {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "employees_seq")
+    @SequenceGenerator(
+            name = "employees_seq",
+            sequenceName = "NEXORA_EMPLOYEES_SEQ",
+            allocationSize = 1)
+    @Column(name = "EMPLOYEE_ID")
+    private Long id;
+
+    @NotBlank
+    @Column(name = "FIRST_NAME", nullable = false)
+    private String firstName;
+
+    @NotBlank
+    @Column(name = "LAST_NAME", nullable = false)
+    private String lastName;
+
+    @Email
+    @NotBlank
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    private String phone;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "DEPARTMENT_ID")
+    @JsonDeserialize(using = DepartmentReferenceDeserializer.class)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({
+            "employees", "hibernateLazyInitializer", "handler"
+    })
+    private Department department;
+
+    private String jobTitle;
+
+    @PositiveOrZero
+    private Double salary;
+
+    private LocalDate hireDate;
+
+    private String status;
+
+    public Employee() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public Department getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(Department department) {
+        this.department = department;
+    }
+
+    public String getJobTitle() {
+        return jobTitle;
+    }
+
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
+
+    public Double getSalary() {
+        return salary;
+    }
+
+    public void setSalary(Double salary) {
+        this.salary = salary;
+    }
+
+    public LocalDate getHireDate() {
+        return hireDate;
+    }
+
+    public void setHireDate(LocalDate hireDate) {
+        this.hireDate = hireDate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\exception\GlobalExceptionHandler.java
+========================================
+
+package com.nexora.workforce.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(
+            ResourceNotFoundException ex) {
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(
+            IllegalArgumentException ex) {
+
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", ex.getMessage()));
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\exception\ResourceNotFoundException.java
+========================================
+
+package com.nexora.workforce.exception;
+
+public class ResourceNotFoundException
+        extends RuntimeException {
+
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\repository\DepartmentRepository.java
+========================================
+package com.nexora.workforce.repository;
+
+import com.nexora.workforce.entity.Department;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface DepartmentRepository extends JpaRepository<Department, Long> {
+
+    @Override
+    @EntityGraph(attributePaths = {"employees", "employees.department"})
+    List<Department> findAll();
+
+    @EntityGraph(attributePaths = {"employees", "employees.department"})
+    Optional<Department> findWithEmployeesById(Long id);
+
+    List<Department> findAllByNameIgnoreCase(String name);
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\repository\EmployeeRepository.java
+========================================
+
+package com.nexora.workforce.repository;
+
+import com.nexora.workforce.entity.Employee;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+import java.util.List;
+
+public interface EmployeeRepository
+        extends JpaRepository<Employee, Long> {
+
+    @Override
+    @EntityGraph(attributePaths = "department")
+    List<Employee> findAll();
+
+    @Override
+    @EntityGraph(attributePaths = "department")
+    Optional<Employee> findById(Long id);
+
+    @EntityGraph(attributePaths = "department")
+    List<Employee> findByFirstNameContainingIgnoreCase(
+        String firstName
+    );
+
+    @EntityGraph(attributePaths = "department")
+    List<Employee> findByDepartment_NameIgnoreCase(
+        String departmentName
+    );
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\service\DepartmentService.java
+========================================
+package com.nexora.workforce.service;
+
+import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.exception.ResourceNotFoundException;
+import com.nexora.workforce.repository.DepartmentRepository;
+import com.nexora.workforce.repository.EmployeeRepository;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+@Service
+public class DepartmentService {
+
+    private final DepartmentRepository departmentRepository;
+    private final EmployeeRepository employeeRepository;
+
+    public DepartmentService(
+            DepartmentRepository departmentRepository,
+            EmployeeRepository employeeRepository) {
+        this.departmentRepository = departmentRepository;
+        this.employeeRepository = employeeRepository;
+    }
+
+    public Department createDepartment(Department department) {
+        return departmentRepository.save(department);
+    }
+
+    public List<Department> getAllDepartments() {
+        return departmentRepository.findAll();
+    }
+
+    public Department getDepartmentById(Long id) {
+        return departmentRepository.findWithEmployeesById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Department not found: " + id));
+    }
+
+    public Employee assignEmployee(Long departmentId, Long employeeId) {
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Department not found: " + departmentId));
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found: " + employeeId));
+        employee.setDepartment(department);
+        return employeeRepository.save(employee);
+    }
+}
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\service\EmployeeService.java
+========================================
+
+package com.nexora.workforce.service;
+
+import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.exception.ResourceNotFoundException;
+import com.nexora.workforce.repository.DepartmentRepository;
+import com.nexora.workforce.repository.EmployeeRepository;
+
+import org.springframework.stereotype.Service;
+import java.util.List;
+
+@Service
+public class EmployeeService {
+
+    private final EmployeeRepository repository;
+    private final DepartmentRepository departmentRepository;
+
+    public EmployeeService(
+            EmployeeRepository repository,
+            DepartmentRepository departmentRepository) {
+        this.repository = repository;
+        this.departmentRepository = departmentRepository;
+    }
+
+    // CREATE
+    public Employee createEmployee(Employee employee) {
+        employee.setDepartment(resolveDepartment(employee.getDepartment()));
+        return repository.save(employee);
+    }
+
+    // READ ALL
+    public List<Employee> getAllEmployees() {
+        return repository.findAll();
+    }
+
+    // READ BY ID
+    public Employee getEmployeeById(Long id) {
+        return repository.findById(id)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("Employee not found: " + id)
+            );
+    }
+
+    // UPDATE
+    public Employee updateEmployee(
+            Long id, Employee updatedEmployee) {
+
+        Employee employee = getEmployeeById(id);
+
+        employee.setFirstName(updatedEmployee.getFirstName());
+        employee.setLastName(updatedEmployee.getLastName());
+        employee.setEmail(updatedEmployee.getEmail());
+        employee.setPhone(updatedEmployee.getPhone());
+        employee.setDepartment(resolveDepartment(updatedEmployee.getDepartment()));
+        employee.setJobTitle(updatedEmployee.getJobTitle());
+        employee.setSalary(updatedEmployee.getSalary());
+        employee.setHireDate(updatedEmployee.getHireDate());
+        employee.setStatus(updatedEmployee.getStatus());
+
+        return repository.save(employee);
+    }
+
+    // DELETE
+    public void deleteEmployee(Long id) {
+        Employee employee = getEmployeeById(id);
+        repository.delete(employee);
+    }
+
+    // SEARCH
+    public List<Employee> searchEmployees(String name) {
+        return repository.findByFirstNameContainingIgnoreCase(name);
+    }
+
+    private Department resolveDepartment(Department departmentReference) {
+        if (departmentReference == null) {
+            return null;
+        }
+
+        if (departmentReference.getId() != null) {
+            return departmentRepository.findById(departmentReference.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Department not found: " + departmentReference.getId()));
+        }
+
+        if (departmentReference.getName() != null) {
+            if (departmentReference.getName().isBlank()) {
+                return null;
+            }
+
+            List<Department> matches = departmentRepository.findAllByNameIgnoreCase(
+                    departmentReference.getName().trim());
+            if (matches.size() == 1) {
+                return matches.get(0);
+            }
+            if (matches.isEmpty()) {
+                throw new ResourceNotFoundException(
+                        "Department not found: " + departmentReference.getName());
+            }
+            throw new IllegalArgumentException(
+                    "Multiple departments match name: " + departmentReference.getName());
+        }
+
+        throw new IllegalArgumentException(
+                "department must contain an id or a department name");
+    }
+}
