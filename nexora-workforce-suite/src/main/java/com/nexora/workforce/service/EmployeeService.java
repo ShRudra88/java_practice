@@ -1,6 +1,8 @@
 
 package com.nexora.workforce.service;
 
+import com.nexora.workforce.dto.EmployeeRequestDTO;
+import com.nexora.workforce.dto.EmployeeResponseDTO;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.exception.ResourceNotFoundException;
@@ -24,18 +26,25 @@ public class EmployeeService {
     }
 
     // CREATE
-    public Employee createEmployee(Employee employee) {
+    public EmployeeResponseDTO createEmployee(EmployeeRequestDTO request) {
+        Employee employee = toEmployee(request);
         employee.setDepartment(resolveDepartment(employee.getDepartment()));
-        return repository.save(employee);
+        return toResponse(repository.save(employee));
     }
 
     // READ ALL
-    public List<Employee> getAllEmployees() {
-        return repository.findAll();
+    public List<EmployeeResponseDTO> getAllEmployees() {
+        return repository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     // READ BY ID
-    public Employee getEmployeeById(Long id) {
+    public EmployeeResponseDTO getEmployeeById(Long id) {
+        return toResponse(findEmployeeEntityById(id));
+    }
+
+    private Employee findEmployeeEntityById(Long id) {
         return repository.findById(id)
             .orElseThrow(() ->
                 new ResourceNotFoundException("Employee not found: " + id)
@@ -43,33 +52,67 @@ public class EmployeeService {
     }
 
     // UPDATE
-    public Employee updateEmployee(
-            Long id, Employee updatedEmployee) {
+    public EmployeeResponseDTO updateEmployee(
+            Long id, EmployeeRequestDTO request) {
 
-        Employee employee = getEmployeeById(id);
+        Employee updatedEmployee = toEmployee(request);
+        Employee currentEmployee = findEmployeeEntityById(id);
+        currentEmployee.setFirstName(updatedEmployee.getFirstName());
+        currentEmployee.setLastName(updatedEmployee.getLastName());
+        currentEmployee.setEmail(updatedEmployee.getEmail());
+        currentEmployee.setPhone(updatedEmployee.getPhone());
+        currentEmployee.setDepartment(resolveDepartment(updatedEmployee.getDepartment()));
+        currentEmployee.setJobTitle(updatedEmployee.getJobTitle());
+        currentEmployee.setSalary(updatedEmployee.getSalary());
+        currentEmployee.setHireDate(updatedEmployee.getHireDate());
+        currentEmployee.setStatus(updatedEmployee.getStatus());
 
-        employee.setFirstName(updatedEmployee.getFirstName());
-        employee.setLastName(updatedEmployee.getLastName());
-        employee.setEmail(updatedEmployee.getEmail());
-        employee.setPhone(updatedEmployee.getPhone());
-        employee.setDepartment(resolveDepartment(updatedEmployee.getDepartment()));
-        employee.setJobTitle(updatedEmployee.getJobTitle());
-        employee.setSalary(updatedEmployee.getSalary());
-        employee.setHireDate(updatedEmployee.getHireDate());
-        employee.setStatus(updatedEmployee.getStatus());
-
-        return repository.save(employee);
+        return toResponse(repository.save(currentEmployee));
     }
 
     // DELETE
     public void deleteEmployee(Long id) {
-        Employee employee = getEmployeeById(id);
+        Employee employee = findEmployeeEntityById(id);
         repository.delete(employee);
     }
 
     // SEARCH
-    public List<Employee> searchEmployees(String name) {
-        return repository.findByFirstNameContainingIgnoreCase(name);
+    public List<EmployeeResponseDTO> searchEmployees(String name) {
+        return repository.findByFirstNameContainingIgnoreCase(name).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private Employee toEmployee(EmployeeRequestDTO request) {
+        Employee employee = new Employee();
+        employee.setFirstName(request.getFirstName());
+        employee.setLastName(request.getLastName());
+        employee.setEmail(request.getEmail());
+        employee.setPhone(request.getPhone());
+        employee.setDepartment(request.getDepartment());
+        employee.setJobTitle(request.getJobTitle());
+        employee.setSalary(request.getSalary());
+        employee.setHireDate(request.getHireDate());
+        employee.setStatus(request.getStatus());
+        return employee;
+    }
+
+    private EmployeeResponseDTO toResponse(Employee employee) {
+        EmployeeResponseDTO response = new EmployeeResponseDTO();
+        response.setId(employee.getId());
+        response.setFirstName(employee.getFirstName());
+        response.setLastName(employee.getLastName());
+        response.setEmail(employee.getEmail());
+        response.setPhone(employee.getPhone());
+        if (employee.getDepartment() != null) {
+            response.setDepartmentId(employee.getDepartment().getId());
+            response.setDepartmentName(employee.getDepartment().getName());
+        }
+        response.setJobTitle(employee.getJobTitle());
+        response.setSalary(employee.getSalary());
+        response.setHireDate(employee.getHireDate());
+        response.setStatus(employee.getStatus());
+        return response;
     }
 
     private Department resolveDepartment(Department departmentReference) {

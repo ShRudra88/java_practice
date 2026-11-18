@@ -1,7 +1,8 @@
 
 package com.nexora.workforce.controller;
 
-import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.dto.EmployeeRequestDTO;
+import com.nexora.workforce.dto.EmployeeResponseDTO;
 import com.nexora.workforce.service.EmployeeService;
 
 import org.springframework.http.HttpStatus;
@@ -23,8 +24,8 @@ public class EmployeeController {
 
     // CREATE EMPLOYEE
     @PostMapping
-    public ResponseEntity<Employee> createEmployee(
-            @Valid @RequestBody Employee employee) {
+    public ResponseEntity<EmployeeResponseDTO> createEmployee(
+            @Valid @RequestBody EmployeeRequestDTO employee) {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(service.createEmployee(employee));
@@ -32,21 +33,21 @@ public class EmployeeController {
 
     // GET ALL EMPLOYEES
     @GetMapping
-    public List<Employee> getAllEmployees() {
+    public List<EmployeeResponseDTO> getAllEmployees() {
         return service.getAllEmployees();
     }
 
     // GET EMPLOYEE BY ID
     @GetMapping("/{id}")
-    public Employee getEmployeeById(@PathVariable Long id) {
+    public EmployeeResponseDTO getEmployeeById(@PathVariable Long id) {
         return service.getEmployeeById(id);
     }
 
     // UPDATE EMPLOYEE
     @PutMapping("/{id}")
-    public Employee updateEmployee(
+    public EmployeeResponseDTO updateEmployee(
             @PathVariable Long id,
-            @Valid @RequestBody Employee employee) {
+            @Valid @RequestBody EmployeeRequestDTO employee) {
 
         return service.updateEmployee(id, employee);
     }
@@ -62,7 +63,7 @@ public class EmployeeController {
 
     // SEARCH EMPLOYEE
     @GetMapping("/search")
-    public List<Employee> searchEmployees(
+    public List<EmployeeResponseDTO> searchEmployees(
             @RequestParam String name) {
 
         return service.searchEmployees(name);

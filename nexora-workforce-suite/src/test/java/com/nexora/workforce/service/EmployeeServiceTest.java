@@ -1,14 +1,19 @@
 package com.nexora.workforce.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.nexora.workforce.dto.EmployeeRequestDTO;
+import com.nexora.workforce.dto.EmployeeResponseDTO;
 import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.repository.DepartmentRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,16 +34,47 @@ class EmployeeServiceTest {
 
     @Test
     void createsEmployeeWithoutDepartmentWhenLegacyDepartmentIsBlank() {
-        Employee employee = new Employee();
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
         Department blankDepartment = new Department();
         blankDepartment.setName("");
-        employee.setDepartment(blankDepartment);
-        when(employeeRepository.save(employee)).thenReturn(employee);
+        request.setDepartment(blankDepartment);
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Employee savedEmployee = employeeService.createEmployee(employee);
+        EmployeeResponseDTO savedEmployee = employeeService.createEmployee(request);
 
-        assertNull(savedEmployee.getDepartment());
-        verify(employeeRepository).save(employee);
+        assertNull(savedEmployee.getDepartmentId());
+        assertNull(savedEmployee.getDepartmentName());
+        verify(employeeRepository).save(any(Employee.class));
         verifyNoInteractions(departmentRepository);
+    }
+
+    @Test
+    void createsEmployeeWithDepartmentAndReturnsDepartmentSummary() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setFirstName("Ada");
+        request.setLastName("Lovelace");
+        request.setEmail("ada@example.com");
+        Department departmentReference = new Department();
+        departmentReference.setId(7L);
+        request.setDepartment(departmentReference);
+
+        Department department = new Department();
+        department.setId(7L);
+        department.setName("Engineering");
+        when(departmentRepository.findById(7L)).thenReturn(Optional.of(department));
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> {
+                    Employee employee = invocation.getArgument(0);
+                    employee.setId(12L);
+                    return employee;
+                });
+
+        EmployeeResponseDTO response = employeeService.createEmployee(request);
+
+        assertEquals(12L, response.getId());
+        assertEquals("Ada", response.getFirstName());
+        assertEquals(7L, response.getDepartmentId());
+        assertEquals("Engineering", response.getDepartmentName());
     }
 }
