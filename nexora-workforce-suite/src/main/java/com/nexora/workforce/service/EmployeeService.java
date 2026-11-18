@@ -6,6 +6,7 @@ import com.nexora.workforce.dto.EmployeeResponseDTO;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.exception.ResourceNotFoundException;
+import com.nexora.workforce.exception.DuplicateResourceException;
 import com.nexora.workforce.repository.DepartmentRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
 
@@ -27,6 +28,16 @@ public class EmployeeService {
 
     // CREATE
     public EmployeeResponseDTO createEmployee(EmployeeRequestDTO request) {
+        if (request.getId() != null) {
+            if (repository.existsById(request.getId())) {
+                throw new DuplicateResourceException(
+                        "Employee ID already exists: " + request.getId());
+            }
+            throw new IllegalArgumentException(
+                    "Employee ID is generated and must not be provided");
+        }
+        ensureEmailIsAvailable(request.getEmail(), null);
+
         Employee employee = toEmployee(request);
         employee.setDepartment(resolveDepartment(employee.getDepartment()));
         return toResponse(repository.save(employee));
@@ -55,8 +66,18 @@ public class EmployeeService {
     public EmployeeResponseDTO updateEmployee(
             Long id, EmployeeRequestDTO request) {
 
-        Employee updatedEmployee = toEmployee(request);
         Employee currentEmployee = findEmployeeEntityById(id);
+        if (request.getId() != null && !request.getId().equals(id)) {
+            if (repository.existsById(request.getId())) {
+                throw new DuplicateResourceException(
+                        "Employee ID already exists: " + request.getId());
+            }
+            throw new IllegalArgumentException(
+                    "Employee ID in the request must match the path ID");
+        }
+        ensureEmailIsAvailable(request.getEmail(), id);
+
+        Employee updatedEmployee = toEmployee(request);
         currentEmployee.setFirstName(updatedEmployee.getFirstName());
         currentEmployee.setLastName(updatedEmployee.getLastName());
         currentEmployee.setEmail(updatedEmployee.getEmail());
@@ -68,6 +89,16 @@ public class EmployeeService {
         currentEmployee.setStatus(updatedEmployee.getStatus());
 
         return toResponse(repository.save(currentEmployee));
+    }
+
+    private void ensureEmailIsAvailable(String email, Long employeeId) {
+        boolean emailInUse = employeeId == null
+                ? repository.existsByEmailIgnoreCase(email)
+                : repository.existsByEmailIgnoreCaseAndIdNot(email, employeeId);
+        if (emailInUse) {
+            throw new DuplicateResourceException(
+                    "Employee email already exists: " + email);
+        }
     }
 
     // DELETE

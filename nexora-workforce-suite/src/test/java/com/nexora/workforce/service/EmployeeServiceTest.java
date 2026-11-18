@@ -2,7 +2,9 @@ package com.nexora.workforce.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -11,6 +13,7 @@ import com.nexora.workforce.dto.EmployeeRequestDTO;
 import com.nexora.workforce.dto.EmployeeResponseDTO;
 import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.exception.DuplicateResourceException;
 import com.nexora.workforce.repository.DepartmentRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
 import java.util.Optional;
@@ -76,5 +79,43 @@ class EmployeeServiceTest {
         assertEquals("Ada", response.getFirstName());
         assertEquals(7L, response.getDepartmentId());
         assertEquals("Engineering", response.getDepartmentName());
+    }
+
+    @Test
+    void rejectsAnEmployeeIdThatAlreadyExists() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setId(7L);
+        when(employeeRepository.existsById(7L)).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> employeeService.createEmployee(request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void rejectsAnEmailAlreadyUsedByAnotherEmployee() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setEmail("ada@example.com");
+        when(employeeRepository.existsByEmailIgnoreCase("ada@example.com"))
+                .thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> employeeService.createEmployee(request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void rejectsAnUpdateWithAnIdThatDoesNotMatchThePath() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setId(9L);
+        when(employeeRepository.findById(7L)).thenReturn(Optional.of(new Employee()));
+        when(employeeRepository.existsById(9L)).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> employeeService.updateEmployee(7L, request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
     }
 }

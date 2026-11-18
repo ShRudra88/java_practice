@@ -27,4 +27,8 @@ public interface EmployeeRepository
     List<Employee> findByDepartment_NameIgnoreCase(
         String departmentName
     );
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
 }

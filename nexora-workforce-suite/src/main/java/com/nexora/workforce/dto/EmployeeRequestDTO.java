@@ -5,10 +5,14 @@ import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.DepartmentReferenceDeserializer;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.time.LocalDate;
 
 public class EmployeeRequestDTO {
+
+    @Positive
+    private Long id;
 
     @NotBlank
     private String firstName;
@@ -31,6 +35,14 @@ public class EmployeeRequestDTO {
 
     private LocalDate hireDate;
     private String status;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public String getFirstName() {
         return firstName;
