@@ -1,9 +1,21 @@
 
 package com.nexora.workforce.entity;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.time.LocalDate;
 
 @Entity
@@ -37,9 +49,7 @@ public class Employee {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "DEPARTMENT_ID")
     @JsonDeserialize(using = DepartmentReferenceDeserializer.class)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({
-            "employees", "hibernateLazyInitializer", "handler"
-    })
+    @JsonIgnoreProperties({"employees", "hibernateLazyInitializer", "handler"})
     private Department department;
 
     private String jobTitle;

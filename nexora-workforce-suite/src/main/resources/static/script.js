@@ -4,16 +4,37 @@ const DEPARTMENTS_API_URL = "/api/departments";
 
 const form = document.getElementById("employeeForm");
 const transferForm = document.getElementById("transferForm");
+const employeeSearchForm = document.getElementById("employeeSearchForm");
+let currentPage = 0;
+let pageSize = 10;
+let totalPages = 0;
+let activeNameFilter = "";
+let activeDepartmentFilter = "";
 
-// Load employees when page opens
 document.addEventListener("DOMContentLoaded", function() {
-    loadEmployees();
+    loadEmployees(0);
     loadDepartments();
 });
 
-// CREATE OR UPDATE
-form.addEventListener("submit", async function(event) {
+employeeSearchForm.addEventListener("submit", searchEmployees);
+document.getElementById("clearFiltersButton").addEventListener(
+    "click", clearEmployeeFilters);
+document.getElementById("pageSize").addEventListener("change", function(event) {
+    pageSize = Number(event.target.value);
+    loadEmployees(0);
+});
+document.getElementById("previousPageButton").addEventListener("click", function() {
+    if (currentPage > 0) {
+        loadEmployees(currentPage - 1);
+    }
+});
+document.getElementById("nextPageButton").addEventListener("click", function() {
+    if (currentPage + 1 < totalPages) {
+        loadEmployees(currentPage + 1);
+    }
+});
 
+form.addEventListener("submit", async function(event) {
     event.preventDefault();
 
     const id = document.getElementById("employeeId").value;
@@ -55,7 +76,7 @@ form.addEventListener("submit", async function(event) {
         );
 
         resetForm();
-        loadEmployees();
+        loadEmployees(0);
 
     } catch (error) {
         showMessage(error.message);
@@ -63,21 +84,29 @@ form.addEventListener("submit", async function(event) {
 });
 
 
-// READ ALL EMPLOYEES
-async function loadEmployees() {
-
+async function loadEmployees(page = currentPage) {
     try {
-
-        const response = await fetch(API_URL);
+        const parameters = new URLSearchParams({
+            page: String(page),
+            size: String(pageSize)
+        });
+        if (activeNameFilter) {
+            parameters.set("name", activeNameFilter);
+        }
+        if (activeDepartmentFilter) {
+            parameters.set("departmentId", activeDepartmentFilter);
+        }
+        const response = await fetch(`${API_URL}/search?${parameters}`);
 
         if (!response.ok) {
             throw new Error("Unable to load employees");
         }
 
-        const employees = await response.json();
-
-        displayEmployees(employees);
-
+        const result = await response.json();
+        currentPage = result.page;
+        totalPages = result.totalPages;
+        displayEmployees(result.content, result.totalElements);
+        updatePagination();
     } catch (error) {
         showMessage(error.message);
     }
@@ -93,9 +122,12 @@ async function loadDepartments() {
         const departments = await response.json();
         const select = document.getElementById("transferDepartment");
         select.replaceChildren(new Option("Select a department", ""));
+        const departmentFilter = document.getElementById("departmentFilter");
+        departmentFilter.replaceChildren(new Option("All departments", ""));
         departments.forEach(department => {
-            select.add(new Option(
-                `${department.name} (ID: ${department.id})`, department.id));
+            const label = `${department.name} (ID: ${department.id})`;
+            select.add(new Option(label, department.id));
+            departmentFilter.add(new Option(label, department.id));
         });
     } catch (error) {
         showMessage(error.message);
@@ -103,25 +135,26 @@ async function loadDepartments() {
 }
 
 
-// DISPLAY EMPLOYEES
-function displayEmployees(employees) {
-
+function displayEmployees(employees, matchingEmployees) {
     const table = document.getElementById("employeeTable");
+    table.replaceChildren();
 
-    table.innerHTML = "";
-
-    document.getElementById("totalEmployees").textContent =
-        employees.length;
+    document.getElementById("totalEmployees").textContent = matchingEmployees;
+    const firstResult = matchingEmployees === 0
+        ? 0
+        : currentPage * pageSize + 1;
+    const lastResult = Math.min((currentPage + 1) * pageSize, matchingEmployees);
+    document.getElementById("employeeSummary").textContent =
+        `Showing ${firstResult}-${lastResult} of ${matchingEmployees} employees`;
 
     employees.forEach(employee => {
-
         const row = document.createElement("tr");
 
         const values = [
             employee.id,
             `${employee.firstName} ${employee.lastName}`,
             employee.email,
-            employee.departmentName || employee.department?.name || employee.department || "",
+            employee.departmentName || "",
             employee.jobTitle || "",
             employee.salary ?? "",
             employee.status || ""
@@ -163,16 +196,13 @@ function displayEmployees(employees) {
 }
 
 
-// GET EMPLOYEE FOR EDITING
 function editEmployee(employee) {
-
     document.getElementById("employeeId").value = employee.id;
     document.getElementById("firstName").value = employee.firstName;
     document.getElementById("lastName").value = employee.lastName;
     document.getElementById("email").value = employee.email;
     document.getElementById("phone").value = employee.phone || "";
-    document.getElementById("department").value =
-        employee.departmentName || employee.department?.name || employee.department || "";
+    document.getElementById("department").value = employee.departmentName || "";
     document.getElementById("department").readOnly = true;
     document.getElementById("jobTitle").value = employee.jobTitle || "";
     document.getElementById("salary").value = employee.salary ?? "";
@@ -230,7 +260,7 @@ transferForm.addEventListener("submit", async function(event) {
 
         showMessage("Employee transferred successfully!");
         closeTransferForm();
-        await loadEmployees();
+        await loadEmployees(0);
     } catch (error) {
         showMessage(error.message);
     }
@@ -280,9 +310,7 @@ document.getElementById("cancelTransferButton").addEventListener(
     "click", closeTransferForm);
 
 
-// DELETE EMPLOYEE
 async function deleteEmployee(id) {
-
     if (!confirm("Are you sure you want to delete this employee?")) {
         return;
     }
@@ -299,7 +327,7 @@ async function deleteEmployee(id) {
 
         showMessage("Employee deleted successfully!");
 
-        loadEmployees();
+        loadEmployees(0);
 
     } catch (error) {
         showMessage(error.message);
@@ -307,39 +335,33 @@ async function deleteEmployee(id) {
 }
 
 
-// SEARCH EMPLOYEES
-async function searchEmployees() {
+function searchEmployees(event) {
+    event.preventDefault();
+    activeNameFilter = document.getElementById("searchInput").value.trim();
+    activeDepartmentFilter =
+        document.getElementById("departmentFilter").value;
+    loadEmployees(0);
+}
 
-    const name = document.getElementById("searchInput").value.trim();
+function clearEmployeeFilters() {
+    document.getElementById("searchInput").value = "";
+    document.getElementById("departmentFilter").value = "";
+    activeNameFilter = "";
+    activeDepartmentFilter = "";
+    loadEmployees(0);
+}
 
-    if (!name) {
-        loadEmployees();
-        return;
-    }
-
-    try {
-
-        const response = await fetch(
-            `${API_URL}/search?name=${encodeURIComponent(name)}`
-        );
-
-        if (!response.ok) {
-            throw new Error("Search failed");
-        }
-
-        const employees = await response.json();
-
-        displayEmployees(employees);
-
-    } catch (error) {
-        showMessage(error.message);
-    }
+function updatePagination() {
+    document.getElementById("pageInfo").textContent =
+        `Page ${totalPages === 0 ? 0 : currentPage + 1} of ${totalPages}`;
+    document.getElementById("previousPageButton").disabled =
+        currentPage === 0 || totalPages === 0;
+    document.getElementById("nextPageButton").disabled =
+        currentPage + 1 >= totalPages;
 }
 
 
-// RESET FORM
 function resetForm() {
-
     form.reset();
 
     document.getElementById("employeeId").value = "";
@@ -355,8 +377,6 @@ function resetForm() {
 }
 
 
-// DISPLAY MESSAGE
 function showMessage(message) {
-
     document.getElementById("message").textContent = message;
 }

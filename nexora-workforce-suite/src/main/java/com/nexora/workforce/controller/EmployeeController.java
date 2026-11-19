@@ -1,18 +1,25 @@
 
 package com.nexora.workforce.controller;
 
+import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
+import com.nexora.workforce.dto.EmployeePageResponseDTO;
 import com.nexora.workforce.dto.EmployeeRequestDTO;
 import com.nexora.workforce.dto.EmployeeResponseDTO;
-import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
 import com.nexora.workforce.dto.EmployeeTransferRequestDTO;
 import com.nexora.workforce.service.EmployeeService;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/employees")
@@ -24,22 +31,18 @@ public class EmployeeController {
         this.service = service;
     }
 
-    // CREATE EMPLOYEE
     @PostMapping
     public ResponseEntity<EmployeeResponseDTO> createEmployee(
             @Valid @RequestBody EmployeeRequestDTO employee) {
-
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(service.createEmployee(employee));
     }
 
-    // GET ALL EMPLOYEES
     @GetMapping
     public List<EmployeeResponseDTO> getAllEmployees() {
         return service.getAllEmployees();
     }
 
-    // GET EMPLOYEE BY ID
     @GetMapping("/{id}")
     public EmployeeResponseDTO getEmployeeById(@PathVariable Long id) {
         return service.getEmployeeById(id);
@@ -58,29 +61,26 @@ public class EmployeeController {
         return service.transferEmployee(id, request);
     }
 
-    // UPDATE EMPLOYEE
     @PutMapping("/{id}")
     public EmployeeResponseDTO updateEmployee(
             @PathVariable Long id,
             @Valid @RequestBody EmployeeRequestDTO employee) {
-
         return service.updateEmployee(id, employee);
     }
 
-    // DELETE EMPLOYEE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(
             @PathVariable Long id) {
-
         service.deleteEmployee(id);
         return ResponseEntity.noContent().build();
     }
 
-    // SEARCH EMPLOYEE
     @GetMapping("/search")
-    public List<EmployeeResponseDTO> searchEmployees(
-            @RequestParam String name) {
-
-        return service.searchEmployees(name);
+    public EmployeePageResponseDTO searchEmployees(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return service.searchEmployees(name, departmentId, page, size);
     }
 }

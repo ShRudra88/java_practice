@@ -57,6 +57,38 @@ form {
     gap: 12px;
 }
 
+.employee-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.filter-field {
+    flex: 1 1 190px;
+}
+
+.filter-field label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.page-size-field {
+    flex: 0 1 140px;
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.pagination-controls button:disabled {
+    background: #aab4c1;
+    cursor: not-allowed;
+}
+
 input, select {
     padding: 12px;
     border: 1px solid #ccd4df;

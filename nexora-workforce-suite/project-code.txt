@@ -1,7 +1,86 @@
 ﻿
 ========================================
+FILE: pom.xml
+========================================
+
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.nexora</groupId>
+    <artifactId>nexora-workforce-suite</artifactId>
+    <version>1.0.0</version>
+
+    <name>Nexora Workforce Suite</name>
+    <description>Employee Workforce Management System</description>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- Spring Boot REST API -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Data JPA -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Oracle Database Driver -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+
+
+========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\NexoraWorkforceSuiteApplication.java
 ========================================
+
 package com.nexora.workforce;
 
 import org.springframework.boot.SpringApplication;
@@ -17,9 +96,11 @@ public class NexoraWorkforceSuiteApplication {
     }
 }
 
+
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\controller\DepartmentController.java
 ========================================
+
 package com.nexora.workforce.controller;
 
 import com.nexora.workforce.entity.Department;
@@ -72,21 +153,34 @@ public class DepartmentController {
     }
 }
 
+
+
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\controller\EmployeeController.java
 ========================================
 
+
 package com.nexora.workforce.controller;
 
-import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
+import com.nexora.workforce.dto.EmployeePageResponseDTO;
+import com.nexora.workforce.dto.EmployeeRequestDTO;
+import com.nexora.workforce.dto.EmployeeResponseDTO;
+import com.nexora.workforce.dto.EmployeeTransferRequestDTO;
 import com.nexora.workforce.service.EmployeeService;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/employees")
@@ -98,57 +192,272 @@ public class EmployeeController {
         this.service = service;
     }
 
-    // CREATE EMPLOYEE
     @PostMapping
-    public ResponseEntity<Employee> createEmployee(
-            @Valid @RequestBody Employee employee) {
-
+    public ResponseEntity<EmployeeResponseDTO> createEmployee(
+            @Valid @RequestBody EmployeeRequestDTO employee) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(service.createEmployee(employee));
     }
 
-    // GET ALL EMPLOYEES
     @GetMapping
-    public List<Employee> getAllEmployees() {
+    public List<EmployeeResponseDTO> getAllEmployees() {
         return service.getAllEmployees();
     }
 
-    // GET EMPLOYEE BY ID
     @GetMapping("/{id}")
-    public Employee getEmployeeById(@PathVariable Long id) {
+    public EmployeeResponseDTO getEmployeeById(@PathVariable Long id) {
         return service.getEmployeeById(id);
     }
 
-    // UPDATE EMPLOYEE
-    @PutMapping("/{id}")
-    public Employee updateEmployee(
-            @PathVariable Long id,
-            @Valid @RequestBody Employee employee) {
+    @GetMapping("/{id}/department-history")
+    public List<EmployeeDepartmentHistoryResponseDTO> getDepartmentHistory(
+            @PathVariable Long id) {
+        return service.getDepartmentHistory(id);
+    }
 
+    @PostMapping("/{id}/transfers")
+    public EmployeeResponseDTO transferEmployee(
+            @PathVariable Long id,
+            @Valid @RequestBody EmployeeTransferRequestDTO request) {
+        return service.transferEmployee(id, request);
+    }
+
+    @PutMapping("/{id}")
+    public EmployeeResponseDTO updateEmployee(
+            @PathVariable Long id,
+            @Valid @RequestBody EmployeeRequestDTO employee) {
         return service.updateEmployee(id, employee);
     }
 
-    // DELETE EMPLOYEE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(
             @PathVariable Long id) {
-
         service.deleteEmployee(id);
         return ResponseEntity.noContent().build();
     }
 
-    // SEARCH EMPLOYEE
     @GetMapping("/search")
-    public List<Employee> searchEmployees(
-            @RequestParam String name) {
-
-        return service.searchEmployees(name);
+    public EmployeePageResponseDTO searchEmployees(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return service.searchEmployees(name, departmentId, page, size);
     }
 }
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\dto\EmployeeDepartmentHistoryResponseDTO.java
+========================================
+
+package com.nexora.workforce.dto;
+
+import java.time.LocalDate;
+
+public record EmployeeDepartmentHistoryResponseDTO(
+        Long id,
+        Long fromDepartmentId,
+        String fromDepartmentName,
+        Long toDepartmentId,
+        String toDepartmentName,
+        LocalDate effectiveDate) {
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\dto\EmployeePageResponseDTO.java
+========================================
+
+package com.nexora.workforce.dto;
+
+import java.util.List;
+
+public record EmployeePageResponseDTO(
+        List<EmployeeResponseDTO> content,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages,
+        boolean hasNext,
+        boolean hasPrevious) {
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\dto\EmployeeRequestDTO.java
+========================================
+
+package com.nexora.workforce.dto;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.DepartmentReferenceDeserializer;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import java.time.LocalDate;
+
+public class EmployeeRequestDTO {
+
+    @Positive
+    private Long id;
+
+    @NotBlank
+    private String firstName;
+
+    @NotBlank
+    private String lastName;
+
+    @Email
+    @NotBlank
+    private String email;
+
+    private String phone;
+
+    @JsonDeserialize(using = DepartmentReferenceDeserializer.class)
+    private Department department;
+    private String jobTitle;
+
+    @PositiveOrZero
+    private Double salary;
+
+    private LocalDate hireDate;
+    private String status;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public Department getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(Department department) {
+        this.department = department;
+    }
+
+    public String getJobTitle() {
+        return jobTitle;
+    }
+
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
+
+    public Double getSalary() {
+        return salary;
+    }
+
+    public void setSalary(Double salary) {
+        this.salary = salary;
+    }
+
+    public LocalDate getHireDate() {
+        return hireDate;
+    }
+
+    public void setHireDate(LocalDate hireDate) {
+        this.hireDate = hireDate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\dto\EmployeeResponseDTO.java
+========================================
+
+package com.nexora.workforce.dto;
+
+import java.time.LocalDate;
+
+public record EmployeeResponseDTO(
+        Long id,
+        String firstName,
+        String lastName,
+        String email,
+        String phone,
+        Long departmentId,
+        String departmentName,
+        String jobTitle,
+        Double salary,
+        LocalDate hireDate,
+        String status) {
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\dto\EmployeeTransferRequestDTO.java
+========================================
+
+package com.nexora.workforce.dto;
+
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Positive;
+import java.time.LocalDate;
+
+public record EmployeeTransferRequestDTO(
+        @NotNull @Positive Long departmentId,
+        @NotNull @PastOrPresent LocalDate effectiveDate) {
+}
+
+
 
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\entity\Department.java
 ========================================
+
 package com.nexora.workforce.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -214,9 +523,12 @@ public class Department {
     }
 }
 
+
+
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\entity\DepartmentReferenceDeserializer.java
 ========================================
+
 package com.nexora.workforce.entity;
 
 import com.fasterxml.jackson.core.JsonParser;
@@ -264,15 +576,30 @@ public class DepartmentReferenceDeserializer extends JsonDeserializer<Department
     }
 }
 
+
+
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\entity\Employee.java
 ========================================
 
+
 package com.nexora.workforce.entity;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.time.LocalDate;
 
 @Entity
@@ -306,9 +633,7 @@ public class Employee {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "DEPARTMENT_ID")
     @JsonDeserialize(using = DepartmentReferenceDeserializer.class)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({
-            "employees", "hibernateLazyInitializer", "handler"
-    })
+    @JsonIgnoreProperties({"employees", "hibernateLazyInitializer", "handler"})
     private Department department;
 
     private String jobTitle;
@@ -404,17 +729,127 @@ public class Employee {
     }
 }
 
+
+
 ========================================
-FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\exception\GlobalExceptionHandler.java
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\entity\EmployeeDepartmentHistory.java
+========================================
+
+package com.nexora.workforce.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "EMPLOYEE_DEPARTMENT_HISTORY")
+public class EmployeeDepartmentHistory {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "employee_department_history_seq")
+    @SequenceGenerator(
+            name = "employee_department_history_seq",
+            sequenceName = "NEXORA_EMPLOYEE_DEPT_HIST_SEQ",
+            allocationSize = 1)
+    @Column(name = "HISTORY_ID")
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "EMPLOYEE_ID", nullable = false)
+    private Employee employee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FROM_DEPARTMENT_ID")
+    private Department fromDepartment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "TO_DEPARTMENT_ID")
+    private Department toDepartment;
+
+    @Column(name = "EFFECTIVE_DATE", nullable = false)
+    private LocalDate effectiveDate;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Employee getEmployee() {
+        return employee;
+    }
+
+    public void setEmployee(Employee employee) {
+        this.employee = employee;
+    }
+
+    public Department getFromDepartment() {
+        return fromDepartment;
+    }
+
+    public void setFromDepartment(Department fromDepartment) {
+        this.fromDepartment = fromDepartment;
+    }
+
+    public Department getToDepartment() {
+        return toDepartment;
+    }
+
+    public void setToDepartment(Department toDepartment) {
+        this.toDepartment = toDepartment;
+    }
+
+    public LocalDate getEffectiveDate() {
+        return effectiveDate;
+    }
+
+    public void setEffectiveDate(LocalDate effectiveDate) {
+        this.effectiveDate = effectiveDate;
+    }
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\exception\DuplicateResourceException.java
 ========================================
 
 package com.nexora.workforce.exception;
 
+public class DuplicateResourceException extends RuntimeException {
+
+    public DuplicateResourceException(String message) {
+        super(message);
+    }
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\exception\GlobalExceptionHandler.java
+========================================
+
+
+package com.nexora.workforce.exception;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -434,11 +869,39 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(Map.of("error", ex.getMessage()));
     }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicate(
+            DuplicateResourceException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(
+            MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
+
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Validation failed", "fields", fieldErrors));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, String>> handleDataConflict(
+            DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Data conflicts with existing records"));
+    }
 }
+
+
 
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\exception\ResourceNotFoundException.java
 ========================================
+
 
 package com.nexora.workforce.exception;
 
@@ -450,9 +913,12 @@ public class ResourceNotFoundException
     }
 }
 
+
+
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\repository\DepartmentRepository.java
 ========================================
+
 package com.nexora.workforce.repository;
 
 import com.nexora.workforce.entity.Department;
@@ -473,17 +939,51 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
     List<Department> findAllByNameIgnoreCase(String name);
 }
 
+
+
 ========================================
-FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\repository\EmployeeRepository.java
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\repository\EmployeeDepartmentHistoryRepository.java
 ========================================
 
 package com.nexora.workforce.repository;
 
-import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.entity.EmployeeDepartmentHistory;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.Optional;
+
+public interface EmployeeDepartmentHistoryRepository
+        extends JpaRepository<EmployeeDepartmentHistory, Long> {
+
+    @EntityGraph(attributePaths = {"fromDepartment", "toDepartment"})
+    List<EmployeeDepartmentHistory> findByEmployee_IdOrderByEffectiveDateAscIdAsc(
+            Long employeeId);
+
+    Optional<EmployeeDepartmentHistory> findTopByEmployee_IdOrderByEffectiveDateDescIdDesc(
+            Long employeeId);
+
+    void deleteByEmployee_Id(Long employeeId);
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\repository\EmployeeRepository.java
+========================================
+
+
+package com.nexora.workforce.repository;
+
+import com.nexora.workforce.entity.Employee;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface EmployeeRepository
         extends JpaRepository<Employee, Long> {
@@ -497,26 +997,39 @@ public interface EmployeeRepository
     Optional<Employee> findById(Long id);
 
     @EntityGraph(attributePaths = "department")
-    List<Employee> findByFirstNameContainingIgnoreCase(
-        String firstName
-    );
+    @Query(
+            """
+                    SELECT e FROM Employee e
+                    WHERE (:name IS NULL OR :name = ''
+                        OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', :name, '%'))
+                        OR LOWER(e.lastName) LIKE LOWER(CONCAT('%', :name, '%'))
+                        OR LOWER(CONCAT(CONCAT(e.firstName, ' '), e.lastName))
+                            LIKE LOWER(CONCAT('%', :name, '%')))
+                    AND (:departmentId IS NULL OR e.department.id = :departmentId)
+                    """)
+    Page<Employee> searchEmployees(
+            @Param("name") String name,
+            @Param("departmentId") Long departmentId,
+            Pageable pageable);
 
-    @EntityGraph(attributePaths = "department")
-    List<Employee> findByDepartment_NameIgnoreCase(
-        String departmentName
-    );
+    boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
 }
+
+
 
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\service\DepartmentService.java
 ========================================
+
 package com.nexora.workforce.service;
 
 import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.exception.ResourceNotFoundException;
 import com.nexora.workforce.repository.DepartmentRepository;
-import com.nexora.workforce.repository.EmployeeRepository;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -524,13 +1037,13 @@ import org.springframework.stereotype.Service;
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
-    private final EmployeeRepository employeeRepository;
+    private final EmployeeService employeeService;
 
     public DepartmentService(
             DepartmentRepository departmentRepository,
-            EmployeeRepository employeeRepository) {
+            EmployeeService employeeService) {
         this.departmentRepository = departmentRepository;
-        this.employeeRepository = employeeRepository;
+        this.employeeService = employeeService;
     }
 
     public Department createDepartment(Department department) {
@@ -551,89 +1064,305 @@ public class DepartmentService {
         Department department = departmentRepository.findById(departmentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Department not found: " + departmentId));
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Employee not found: " + employeeId));
-        employee.setDepartment(department);
-        return employeeRepository.save(employee);
+        return employeeService.transferEmployeeEntity(
+                employeeId, department.getId(), LocalDate.now());
     }
 }
+
+
 
 ========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\service\EmployeeService.java
 ========================================
 
+
 package com.nexora.workforce.service;
 
-import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
+import com.nexora.workforce.dto.EmployeePageResponseDTO;
+import com.nexora.workforce.dto.EmployeeRequestDTO;
+import com.nexora.workforce.dto.EmployeeResponseDTO;
+import com.nexora.workforce.dto.EmployeeTransferRequestDTO;
 import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.entity.EmployeeDepartmentHistory;
+import com.nexora.workforce.exception.DuplicateResourceException;
 import com.nexora.workforce.exception.ResourceNotFoundException;
 import com.nexora.workforce.repository.DepartmentRepository;
+import com.nexora.workforce.repository.EmployeeDepartmentHistoryRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
-
-import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmployeeService {
 
     private final EmployeeRepository repository;
     private final DepartmentRepository departmentRepository;
+    private final EmployeeDepartmentHistoryRepository historyRepository;
 
     public EmployeeService(
             EmployeeRepository repository,
-            DepartmentRepository departmentRepository) {
+            DepartmentRepository departmentRepository,
+            EmployeeDepartmentHistoryRepository historyRepository) {
         this.repository = repository;
         this.departmentRepository = departmentRepository;
+        this.historyRepository = historyRepository;
     }
 
-    // CREATE
-    public Employee createEmployee(Employee employee) {
+    @Transactional
+    public EmployeeResponseDTO createEmployee(EmployeeRequestDTO request) {
+        if (request.getId() != null) {
+            if (repository.existsById(request.getId())) {
+                throw new DuplicateResourceException(
+                        "Employee ID already exists: " + request.getId());
+            }
+            throw new IllegalArgumentException(
+                    "Employee ID is generated and must not be provided");
+        }
+        ensureEmailIsAvailable(request.getEmail(), null);
+
+        Employee employee = toEmployee(request);
         employee.setDepartment(resolveDepartment(employee.getDepartment()));
-        return repository.save(employee);
+        Employee savedEmployee = repository.save(employee);
+        if (savedEmployee.getDepartment() != null) {
+            saveDepartmentHistory(
+                    savedEmployee,
+                    null,
+                    savedEmployee.getDepartment(),
+                    savedEmployee.getHireDate() == null
+                            ? LocalDate.now()
+                            : savedEmployee.getHireDate());
+        }
+        return toResponse(savedEmployee);
     }
 
-    // READ ALL
-    public List<Employee> getAllEmployees() {
-        return repository.findAll();
+    public List<EmployeeResponseDTO> getAllEmployees() {
+        return repository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    // READ BY ID
-    public Employee getEmployeeById(Long id) {
+    public EmployeeResponseDTO getEmployeeById(Long id) {
+        return toResponse(findEmployeeEntityById(id));
+    }
+
+    private Employee findEmployeeEntityById(Long id) {
         return repository.findById(id)
             .orElseThrow(() ->
                 new ResourceNotFoundException("Employee not found: " + id)
             );
     }
 
-    // UPDATE
-    public Employee updateEmployee(
-            Long id, Employee updatedEmployee) {
+    @Transactional
+    public EmployeeResponseDTO updateEmployee(
+            Long id, EmployeeRequestDTO request) {
 
-        Employee employee = getEmployeeById(id);
+        Employee currentEmployee = findEmployeeEntityById(id);
+        if (request.getId() != null && !request.getId().equals(id)) {
+            if (repository.existsById(request.getId())) {
+                throw new DuplicateResourceException(
+                        "Employee ID already exists: " + request.getId());
+            }
+            throw new IllegalArgumentException(
+                    "Employee ID in the request must match the path ID");
+        }
+        ensureEmailIsAvailable(request.getEmail(), id);
 
-        employee.setFirstName(updatedEmployee.getFirstName());
-        employee.setLastName(updatedEmployee.getLastName());
-        employee.setEmail(updatedEmployee.getEmail());
-        employee.setPhone(updatedEmployee.getPhone());
-        employee.setDepartment(resolveDepartment(updatedEmployee.getDepartment()));
-        employee.setJobTitle(updatedEmployee.getJobTitle());
-        employee.setSalary(updatedEmployee.getSalary());
-        employee.setHireDate(updatedEmployee.getHireDate());
-        employee.setStatus(updatedEmployee.getStatus());
+        Employee updatedEmployee = toEmployee(request);
+        Department updatedDepartment = resolveDepartment(updatedEmployee.getDepartment());
+        if (!sameDepartment(currentEmployee.getDepartment(), updatedDepartment)) {
+            recordDepartmentChange(
+                    currentEmployee, updatedDepartment, LocalDate.now());
+        }
+        currentEmployee.setFirstName(updatedEmployee.getFirstName());
+        currentEmployee.setLastName(updatedEmployee.getLastName());
+        currentEmployee.setEmail(updatedEmployee.getEmail());
+        currentEmployee.setPhone(updatedEmployee.getPhone());
+        currentEmployee.setDepartment(updatedDepartment);
+        currentEmployee.setJobTitle(updatedEmployee.getJobTitle());
+        currentEmployee.setSalary(updatedEmployee.getSalary());
+        currentEmployee.setHireDate(updatedEmployee.getHireDate());
+        currentEmployee.setStatus(updatedEmployee.getStatus());
 
+        return toResponse(repository.save(currentEmployee));
+    }
+
+    @Transactional
+    public EmployeeResponseDTO transferEmployee(
+            Long employeeId, EmployeeTransferRequestDTO request) {
+        return toResponse(transferEmployeeEntity(
+                    employeeId, request.departmentId(), request.effectiveDate()));
+    }
+
+    @Transactional
+    public Employee transferEmployeeEntity(
+            Long employeeId, Long departmentId, LocalDate effectiveDate) {
+        if (effectiveDate == null) {
+            throw new IllegalArgumentException("Effective date is required");
+        }
+        if (effectiveDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Effective date must not be in the future");
+        }
+
+        Employee employee = findEmployeeEntityById(employeeId);
+        Department destination = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Department not found: " + departmentId));
+        if (sameDepartment(employee.getDepartment(), destination)) {
+            return employee;
+        }
+        recordDepartmentChange(employee, destination, effectiveDate);
+        employee.setDepartment(destination);
         return repository.save(employee);
     }
 
-    // DELETE
+    @Transactional(readOnly = true)
+    public List<EmployeeDepartmentHistoryResponseDTO> getDepartmentHistory(
+            Long employeeId) {
+        findEmployeeEntityById(employeeId);
+        return historyRepository
+                .findByEmployee_IdOrderByEffectiveDateAscIdAsc(employeeId)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
+    }
+
+    private void ensureEmailIsAvailable(String email, Long employeeId) {
+        boolean emailInUse = employeeId == null
+                ? repository.existsByEmailIgnoreCase(email)
+                : repository.existsByEmailIgnoreCaseAndIdNot(email, employeeId);
+        if (emailInUse) {
+            throw new DuplicateResourceException(
+                    "Employee email already exists: " + email);
+        }
+    }
+
+    @Transactional
     public void deleteEmployee(Long id) {
-        Employee employee = getEmployeeById(id);
+        Employee employee = findEmployeeEntityById(id);
+        historyRepository.deleteByEmployee_Id(id);
         repository.delete(employee);
     }
 
-    // SEARCH
-    public List<Employee> searchEmployees(String name) {
-        return repository.findByFirstNameContainingIgnoreCase(name);
+    public EmployeePageResponseDTO searchEmployees(
+            String name, Long departmentId, int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("Page must be zero or greater");
+        }
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException("Page size must be between 1 and 100");
+        }
+
+        String normalizedName = name == null || name.isBlank()
+                ? null
+                : name.trim();
+        Page<EmployeeResponseDTO> employeePage = repository.searchEmployees(
+                        normalizedName,
+                        departmentId,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")))
+                .map(this::toResponse);
+
+        return new EmployeePageResponseDTO(
+                employeePage.getContent(),
+                employeePage.getNumber(),
+                employeePage.getSize(),
+                employeePage.getTotalElements(),
+                employeePage.getTotalPages(),
+                employeePage.hasNext(),
+                employeePage.hasPrevious());
+    }
+
+    private Employee toEmployee(EmployeeRequestDTO request) {
+        Employee employee = new Employee();
+        employee.setFirstName(request.getFirstName());
+        employee.setLastName(request.getLastName());
+        employee.setEmail(request.getEmail());
+        employee.setPhone(request.getPhone());
+        employee.setDepartment(request.getDepartment());
+        employee.setJobTitle(request.getJobTitle());
+        employee.setSalary(request.getSalary());
+        employee.setHireDate(request.getHireDate());
+        employee.setStatus(request.getStatus());
+        return employee;
+    }
+
+    private EmployeeResponseDTO toResponse(Employee employee) {
+        Department department = employee.getDepartment();
+        return new EmployeeResponseDTO(
+                employee.getId(),
+                employee.getFirstName(),
+                employee.getLastName(),
+                employee.getEmail(),
+                employee.getPhone(),
+                department == null ? null : department.getId(),
+                department == null ? null : department.getName(),
+                employee.getJobTitle(),
+                employee.getSalary(),
+                employee.getHireDate(),
+                employee.getStatus());
+    }
+
+    private EmployeeDepartmentHistoryResponseDTO toHistoryResponse(
+            EmployeeDepartmentHistory history) {
+        Department fromDepartment = history.getFromDepartment();
+        Department toDepartment = history.getToDepartment();
+        return new EmployeeDepartmentHistoryResponseDTO(
+                history.getId(),
+                fromDepartment == null ? null : fromDepartment.getId(),
+                fromDepartment == null ? null : fromDepartment.getName(),
+                toDepartment == null ? null : toDepartment.getId(),
+                toDepartment == null ? null : toDepartment.getName(),
+                history.getEffectiveDate());
+    }
+
+    private void recordDepartmentChange(
+            Employee employee, Department destination, LocalDate effectiveDate) {
+        if (effectiveDate == null || effectiveDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Effective date must be today or earlier");
+        }
+        if (employee.getHireDate() != null
+                && effectiveDate.isBefore(employee.getHireDate())) {
+            throw new IllegalArgumentException(
+                    "Effective date must not be before the employee's hire date");
+        }
+        historyRepository.findTopByEmployee_IdOrderByEffectiveDateDescIdDesc(
+                        employee.getId())
+                .ifPresent(previous -> {
+                    if (effectiveDate.isBefore(previous.getEffectiveDate())) {
+                        throw new IllegalArgumentException(
+                                "Effective date must not be before the latest department history");
+                    }
+                });
+        saveDepartmentHistory(
+                employee, employee.getDepartment(), destination, effectiveDate);
+    }
+
+    private void saveDepartmentHistory(
+            Employee employee,
+            Department fromDepartment,
+            Department toDepartment,
+            LocalDate effectiveDate) {
+        EmployeeDepartmentHistory history = new EmployeeDepartmentHistory();
+        history.setEmployee(employee);
+        history.setFromDepartment(fromDepartment);
+        history.setToDepartment(toDepartment);
+        history.setEffectiveDate(effectiveDate);
+        historyRepository.save(history);
+    }
+
+    private boolean sameDepartment(Department first, Department second) {
+        return first == second
+                || (first != null && second != null
+                        && first.getId() != null
+                        && first.getId().equals(second.getId()));
     }
 
     private Department resolveDepartment(Department departmentReference) {
@@ -669,3 +1398,1262 @@ public class EmployeeService {
                 "department must contain an id or a department name");
     }
 }
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\application.properties
+========================================
+
+
+# Application
+spring.application.name=nexora-workforce-suite
+server.port=8080
+
+# Oracle Database Connection
+spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/freepdb1
+spring.datasource.username=HR_PRACTICE
+spring.datasource.password=[REDACTED]
+spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+
+# Hibernate / JPA
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.open-in-view=false
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\db\manual\oracle-department-sequences.sql
+========================================
+
+-- Run as the application schema owner while the application is stopped.
+-- Existing employee and department rows are preserved; the current EMPLOYEES
+-- DEPARTMENT_ID foreign key already references DEPARTMENTS.
+DECLARE
+    v_start NUMBER;
+    v_exists NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_exists
+    FROM user_sequences
+    WHERE sequence_name = 'NEXORA_EMPLOYEES_SEQ';
+
+    IF v_exists = 0 THEN
+        SELECT NVL(MAX(employee_id), 0) + 1 INTO v_start FROM employees;
+        EXECUTE IMMEDIATE
+            'CREATE SEQUENCE NEXORA_EMPLOYEES_SEQ START WITH '
+            || TO_CHAR(v_start, 'FM99999999999999999999999999999999999999')
+            || ' INCREMENT BY 1 NOCYCLE';
+    END IF;
+
+    SELECT COUNT(*) INTO v_exists
+    FROM user_sequences
+    WHERE sequence_name = 'NEXORA_DEPARTMENTS_SEQ';
+
+    IF v_exists = 0 THEN
+        SELECT NVL(MAX(department_id), 0) + 1 INTO v_start FROM departments;
+        EXECUTE IMMEDIATE
+            'CREATE SEQUENCE NEXORA_DEPARTMENTS_SEQ START WITH '
+            || TO_CHAR(v_start, 'FM99999999999999999999999999999999999999')
+            || ' INCREMENT BY 1 NOCYCLE';
+    END IF;
+END;
+/
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\index.html
+========================================
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Nexora Workforce Suite</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Nexora Workforce Suite</h1>
+    <p>Workforce Management Dashboard</p>
+</header>
+
+<main>
+
+    <section class="dashboard">
+        <div class="card">
+            <h3>Matching Employees</h3>
+            <h2 id="totalEmployees">0</h2>
+        </div>
+    </section>
+
+    <section class="form-section">
+        <h2 id="formTitle">Add New Employee</h2>
+
+        <form id="employeeForm">
+
+            <input type="hidden" id="employeeId">
+
+            <input type="text" id="firstName"
+                   placeholder="First Name" required>
+
+            <input type="text" id="lastName"
+                   placeholder="Last Name" required>
+
+            <input type="email" id="email"
+                   placeholder="Email Address" required>
+
+            <input type="text" id="phone"
+                   placeholder="Phone Number">
+
+            <input type="text" id="department"
+                   placeholder="Department">
+
+            <input type="text" id="jobTitle"
+                   placeholder="Job Title">
+
+            <input type="number" id="salary"
+                   placeholder="Salary" min="0" step="0.01">
+
+            <label for="hireDate">Hire Date</label>
+            <input type="date" id="hireDate">
+
+            <select id="status">
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+            </select>
+
+            <button type="submit" id="submitButton">
+                Add Employee
+            </button>
+
+            <button type="button" id="cancelButton"
+                    onclick="resetForm()" hidden>
+                Cancel Edit
+            </button>
+
+        </form>
+    </section>
+
+    <section class="table-section">
+
+        <h2>Employee Records</h2>
+
+        <form id="employeeSearchForm" class="employee-search">
+            <div class="filter-field">
+                <label for="searchInput">Search name</label>
+                <input type="search" id="searchInput"
+                       placeholder="First name, last name, or full name">
+            </div>
+
+            <div class="filter-field">
+                <label for="departmentFilter">Department</label>
+                <select id="departmentFilter">
+                    <option value="">All departments</option>
+                </select>
+            </div>
+
+            <div class="filter-field page-size-field">
+                <label for="pageSize">Rows per page</label>
+                <select id="pageSize">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+
+            <button type="submit">Search</button>
+            <button type="button" id="clearFiltersButton">Clear Filters</button>
+        </form>
+
+        <p id="message"></p>
+        <p id="employeeSummary" aria-live="polite"></p>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Job Title</th>
+                        <th>Salary</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody id="employeeTable"></tbody>
+            </table>
+        </div>
+
+        <div class="pagination-controls">
+            <button type="button" id="previousPageButton">Previous</button>
+            <span id="pageInfo" aria-live="polite">Page 0 of 0</span>
+            <button type="button" id="nextPageButton">Next</button>
+        </div>
+
+    </section>
+
+    <section id="transferSection" class="form-section" hidden>
+        <h2>Transfer Employee</h2>
+        <p id="transferEmployeeName"></p>
+        <form id="transferForm">
+            <input type="hidden" id="transferEmployeeId">
+
+            <label for="transferDepartment">New Department</label>
+            <select id="transferDepartment" required></select>
+
+            <label for="transferEffectiveDate">Effective Date</label>
+            <input type="date" id="transferEffectiveDate" required>
+
+            <button type="submit">Record Transfer</button>
+            <button type="button" id="cancelTransferButton">Cancel</button>
+        </form>
+    </section>
+
+    <section id="historySection" hidden>
+        <h2 id="historyTitle">Department History</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Effective Date</th>
+                        <th>From Department</th>
+                        <th>To Department</th>
+                    </tr>
+                </thead>
+                <tbody id="departmentHistoryTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+<script src="script.js"></script>
+
+</body>
+</html>
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\script.js
+========================================
+
+
+const API_URL = "/api/employees";
+const DEPARTMENTS_API_URL = "/api/departments";
+
+const form = document.getElementById("employeeForm");
+const transferForm = document.getElementById("transferForm");
+const employeeSearchForm = document.getElementById("employeeSearchForm");
+let currentPage = 0;
+let pageSize = 10;
+let totalPages = 0;
+let activeNameFilter = "";
+let activeDepartmentFilter = "";
+
+document.addEventListener("DOMContentLoaded", function() {
+    loadEmployees(0);
+    loadDepartments();
+});
+
+employeeSearchForm.addEventListener("submit", searchEmployees);
+document.getElementById("clearFiltersButton").addEventListener(
+    "click", clearEmployeeFilters);
+document.getElementById("pageSize").addEventListener("change", function(event) {
+    pageSize = Number(event.target.value);
+    loadEmployees(0);
+});
+document.getElementById("previousPageButton").addEventListener("click", function() {
+    if (currentPage > 0) {
+        loadEmployees(currentPage - 1);
+    }
+});
+document.getElementById("nextPageButton").addEventListener("click", function() {
+    if (currentPage + 1 < totalPages) {
+        loadEmployees(currentPage + 1);
+    }
+});
+
+form.addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const id = document.getElementById("employeeId").value;
+
+    const employee = {
+        firstName: document.getElementById("firstName").value,
+        lastName: document.getElementById("lastName").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        department: document.getElementById("department").value,
+        jobTitle: document.getElementById("jobTitle").value,
+        salary: Number(document.getElementById("salary").value || 0),
+        hireDate: document.getElementById("hireDate").value || null,
+        status: document.getElementById("status").value
+    };
+
+    const method = id ? "PUT" : "POST";
+
+    const url = id ? `${API_URL}/${id}` : API_URL;
+
+    try {
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(employee)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Request failed");
+        }
+
+        showMessage(
+            id ? "Employee updated successfully!" :
+                 "Employee added successfully!"
+        );
+
+        resetForm();
+        loadEmployees(0);
+
+    } catch (error) {
+        showMessage(error.message);
+    }
+});
+
+
+async function loadEmployees(page = currentPage) {
+    try {
+        const parameters = new URLSearchParams({
+            page: String(page),
+            size: String(pageSize)
+        });
+        if (activeNameFilter) {
+            parameters.set("name", activeNameFilter);
+        }
+        if (activeDepartmentFilter) {
+            parameters.set("departmentId", activeDepartmentFilter);
+        }
+        const response = await fetch(`${API_URL}/search?${parameters}`);
+
+        if (!response.ok) {
+            throw new Error("Unable to load employees");
+        }
+
+        const result = await response.json();
+        currentPage = result.page;
+        totalPages = result.totalPages;
+        displayEmployees(result.content, result.totalElements);
+        updatePagination();
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+async function loadDepartments() {
+    try {
+        const response = await fetch(DEPARTMENTS_API_URL);
+        if (!response.ok) {
+            throw new Error("Unable to load departments");
+        }
+
+        const departments = await response.json();
+        const select = document.getElementById("transferDepartment");
+        select.replaceChildren(new Option("Select a department", ""));
+        const departmentFilter = document.getElementById("departmentFilter");
+        departmentFilter.replaceChildren(new Option("All departments", ""));
+        departments.forEach(department => {
+            const label = `${department.name} (ID: ${department.id})`;
+            select.add(new Option(label, department.id));
+            departmentFilter.add(new Option(label, department.id));
+        });
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+
+function displayEmployees(employees, matchingEmployees) {
+    const table = document.getElementById("employeeTable");
+    table.replaceChildren();
+
+    document.getElementById("totalEmployees").textContent = matchingEmployees;
+    const firstResult = matchingEmployees === 0
+        ? 0
+        : currentPage * pageSize + 1;
+    const lastResult = Math.min((currentPage + 1) * pageSize, matchingEmployees);
+    document.getElementById("employeeSummary").textContent =
+        `Showing ${firstResult}-${lastResult} of ${matchingEmployees} employees`;
+
+    employees.forEach(employee => {
+        const row = document.createElement("tr");
+
+        const values = [
+            employee.id,
+            `${employee.firstName} ${employee.lastName}`,
+            employee.email,
+            employee.departmentName || "",
+            employee.jobTitle || "",
+            employee.salary ?? "",
+            employee.status || ""
+        ];
+
+        values.forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+
+        const actionCell = document.createElement("td");
+
+        const editButton = document.createElement("button");
+        editButton.textContent = "Edit";
+        editButton.className = "edit-btn";
+        editButton.onclick = () => editEmployee(employee);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+        deleteButton.className = "delete-btn";
+        deleteButton.onclick = () => deleteEmployee(employee.id);
+
+        const transferButton = document.createElement("button");
+        transferButton.textContent = "Transfer";
+        transferButton.className = "transfer-btn";
+        transferButton.onclick = () => openTransferForm(employee);
+
+        const historyButton = document.createElement("button");
+        historyButton.textContent = "History";
+        historyButton.className = "history-btn";
+        historyButton.onclick = () => loadDepartmentHistory(employee);
+
+        actionCell.append(editButton, transferButton, historyButton, deleteButton);
+        row.appendChild(actionCell);
+
+        table.appendChild(row);
+    });
+}
+
+
+function editEmployee(employee) {
+    document.getElementById("employeeId").value = employee.id;
+    document.getElementById("firstName").value = employee.firstName;
+    document.getElementById("lastName").value = employee.lastName;
+    document.getElementById("email").value = employee.email;
+    document.getElementById("phone").value = employee.phone || "";
+    document.getElementById("department").value = employee.departmentName || "";
+    document.getElementById("department").readOnly = true;
+    document.getElementById("jobTitle").value = employee.jobTitle || "";
+    document.getElementById("salary").value = employee.salary ?? "";
+    document.getElementById("hireDate").value = employee.hireDate || "";
+    document.getElementById("status").value = employee.status || "ACTIVE";
+
+    document.getElementById("formTitle").textContent =
+        "Update Employee";
+
+    document.getElementById("submitButton").textContent =
+        "Update Employee";
+
+    document.getElementById("cancelButton").hidden = false;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function openTransferForm(employee) {
+    const now = new Date();
+    const today = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0")
+    ].join("-");
+    document.getElementById("transferEmployeeId").value = employee.id;
+    document.getElementById("transferEmployeeName").textContent =
+        `Transfer ${employee.firstName} ${employee.lastName}`;
+    document.getElementById("transferEffectiveDate").value = today;
+    document.getElementById("transferEffectiveDate").max = today;
+    document.getElementById("transferDepartment").value = "";
+    document.getElementById("transferSection").hidden = false;
+    document.getElementById("historySection").hidden = true;
+    document.getElementById("transferSection").scrollIntoView({ behavior: "smooth" });
+}
+
+transferForm.addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const employeeId = document.getElementById("transferEmployeeId").value;
+    const request = {
+        departmentId: Number(document.getElementById("transferDepartment").value),
+        effectiveDate: document.getElementById("transferEffectiveDate").value
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Unable to transfer employee");
+        }
+
+        showMessage("Employee transferred successfully!");
+        closeTransferForm();
+        await loadEmployees(0);
+    } catch (error) {
+        showMessage(error.message);
+    }
+});
+
+async function loadDepartmentHistory(employee) {
+    try {
+        const response = await fetch(
+            `${API_URL}/${employee.id}/department-history`
+        );
+        if (!response.ok) {
+            throw new Error("Unable to load department history");
+        }
+
+        const history = await response.json();
+        const table = document.getElementById("departmentHistoryTable");
+        table.replaceChildren();
+        history.forEach(entry => {
+            const row = document.createElement("tr");
+            [
+                entry.effectiveDate,
+                entry.fromDepartmentName || "Unassigned",
+                entry.toDepartmentName || "Unassigned"
+            ].forEach(value => {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+            table.appendChild(row);
+        });
+        document.getElementById("historyTitle").textContent =
+            `Department History - ${employee.firstName} ${employee.lastName}`;
+        document.getElementById("historySection").hidden = false;
+        document.getElementById("transferSection").hidden = true;
+        document.getElementById("historySection").scrollIntoView({ behavior: "smooth" });
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+function closeTransferForm() {
+    transferForm.reset();
+    document.getElementById("transferSection").hidden = true;
+}
+
+document.getElementById("cancelTransferButton").addEventListener(
+    "click", closeTransferForm);
+
+
+async function deleteEmployee(id) {
+    if (!confirm("Are you sure you want to delete this employee?")) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: "DELETE"
+        });
+
+        if (!response.ok) {
+            throw new Error("Unable to delete employee");
+        }
+
+        showMessage("Employee deleted successfully!");
+
+        loadEmployees(0);
+
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+
+function searchEmployees(event) {
+    event.preventDefault();
+    activeNameFilter = document.getElementById("searchInput").value.trim();
+    activeDepartmentFilter =
+        document.getElementById("departmentFilter").value;
+    loadEmployees(0);
+}
+
+function clearEmployeeFilters() {
+    document.getElementById("searchInput").value = "";
+    document.getElementById("departmentFilter").value = "";
+    activeNameFilter = "";
+    activeDepartmentFilter = "";
+    loadEmployees(0);
+}
+
+function updatePagination() {
+    document.getElementById("pageInfo").textContent =
+        `Page ${totalPages === 0 ? 0 : currentPage + 1} of ${totalPages}`;
+    document.getElementById("previousPageButton").disabled =
+        currentPage === 0 || totalPages === 0;
+    document.getElementById("nextPageButton").disabled =
+        currentPage + 1 >= totalPages;
+}
+
+
+function resetForm() {
+    form.reset();
+
+    document.getElementById("employeeId").value = "";
+    document.getElementById("department").readOnly = false;
+
+    document.getElementById("formTitle").textContent =
+        "Add New Employee";
+
+    document.getElementById("submitButton").textContent =
+        "Add Employee";
+
+    document.getElementById("cancelButton").hidden = true;
+}
+
+
+function showMessage(message) {
+    document.getElementById("message").textContent = message;
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\style.css
+========================================
+
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f3f6fb;
+    color: #263247;
+}
+
+header {
+    background: #183b68;
+    color: white;
+    padding: 24px 5%;
+}
+
+header h1 {
+    margin: 0;
+}
+
+header p {
+    margin-bottom: 0;
+    color: #d8e5f5;
+}
+
+main {
+    width: 92%;
+    max-width: 1250px;
+    margin: 30px auto;
+}
+
+section {
+    background: white;
+    padding: 22px;
+    margin-bottom: 24px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px #0000000d;
+}
+
+.card {
+    background: #e5efff;
+    padding: 15px;
+    border-radius: 8px;
+    width: 240px;
+}
+
+.card h2 {
+    color: #183b68;
+    font-size: 32px;
+}
+
+form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.employee-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.filter-field {
+    flex: 1 1 190px;
+}
+
+.filter-field label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.page-size-field {
+    flex: 0 1 140px;
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.pagination-controls button:disabled {
+    background: #aab4c1;
+    cursor: not-allowed;
+}
+
+input, select {
+    padding: 12px;
+    border: 1px solid #ccd4df;
+    border-radius: 5px;
+    width: 100%;
+}
+
+label {
+    align-self: center;
+}
+
+button {
+    background: #245a9b;
+    color: white;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #163e70;
+}
+
+#cancelButton {
+    background: #777;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    min-width: 850px;
+}
+
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+th {
+    background: #eaf0f8;
+}
+
+.delete-btn {
+    background: #c0392b;
+}
+
+.edit-btn {
+    background: #22865b;
+}
+
+.transfer-btn {
+    background: #7353a6;
+}
+
+.history-btn {
+    background: #527b91;
+}
+
+#message {
+    font-weight: bold;
+}
+
+@media (max-width: 650px) {
+    form {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\test\java\com\nexora\workforce\NexoraWorkforceSuiteApplicationTests.java
+========================================
+
+package com.nexora.workforce;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.nexora.workforce.controller.DepartmentController;
+import com.nexora.workforce.controller.EmployeeController;
+import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.repository.DepartmentRepository;
+import com.nexora.workforce.repository.EmployeeRepository;
+import java.time.LocalDate;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class NexoraWorkforceSuiteApplicationTests {
+
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    @Autowired
+    private RequestMappingHandlerMapping requestMappingHandlerMapping;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
+	@Test
+    void contextLoads() {
+    }
+
+	@Test
+    void repositoriesAndDepartmentEndpointsAreRegistered() {
+        assertNotNull(applicationContext.getBean(EmployeeRepository.class));
+        assertNotNull(applicationContext.getBean(DepartmentRepository.class));
+
+        Set<String> departmentPaths = requestMappingHandlerMapping
+                .getHandlerMethods()
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().getBeanType()
+                        .equals(DepartmentController.class))
+                .flatMap(entry -> entry.getKey().getPatternValues().stream())
+                .collect(Collectors.toSet());
+
+        assertTrue(departmentPaths.contains("/api/departments"));
+        assertTrue(departmentPaths.contains("/api/departments/{id}"));
+        assertTrue(departmentPaths.contains(
+                "/api/departments/{departmentId}/employees/{employeeId}"));
+
+        Set<String> employeePaths = requestMappingHandlerMapping
+                .getHandlerMethods()
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().getBeanType()
+                        .equals(EmployeeController.class))
+                .flatMap(entry -> entry.getKey().getPatternValues().stream())
+                .collect(Collectors.toSet());
+
+        assertTrue(employeePaths.contains("/api/employees/{id}/transfers"));
+        assertTrue(employeePaths.contains("/api/employees/{id}/department-history"));
+        assertTrue(employeePaths.contains("/api/employees/search"));
+    }
+
+	@Test
+	@Transactional
+    void transferEndpointUpdatesDepartmentAndReturnsHistory() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        Department oldDepartment = new Department();
+        oldDepartment.setName("Previous-" + suffix);
+        oldDepartment = departmentRepository.saveAndFlush(oldDepartment);
+
+        Department newDepartment = new Department();
+        newDepartment.setName("Next-" + suffix);
+        newDepartment = departmentRepository.saveAndFlush(newDepartment);
+
+        Employee employee = new Employee();
+        employee.setFirstName("Transfer");
+        employee.setLastName("Test");
+        employee.setEmail("transfer-" + suffix + "@example.com");
+        employee.setDepartment(oldDepartment);
+        employee.setHireDate(LocalDate.of(2020, 1, 1));
+        employee = employeeRepository.saveAndFlush(employee);
+
+        String request = String.format(
+                "{\"departmentId\":%d,\"effectiveDate\":\"%s\"}",
+                newDepartment.getId(), LocalDate.now());
+
+        mockMvc.perform(post("/api/employees/{id}/transfers", employee.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.departmentId")
+                        .value(newDepartment.getId()));
+
+        mockMvc.perform(get("/api/employees/{id}/department-history", employee.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fromDepartmentName")
+                        .value(oldDepartment.getName()))
+                .andExpect(jsonPath("$[0].toDepartmentName")
+                        .value(newDepartment.getName()))
+                .andExpect(jsonPath("$[0].effectiveDate")
+                        .value(LocalDate.now().toString()));
+    }
+
+	@Test
+	@Transactional
+    void employeeSearchFiltersByDepartmentAndPaginates() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        Department department = new Department();
+        department.setName("Search-" + suffix);
+        department = departmentRepository.saveAndFlush(department);
+
+        Employee first = createSearchEmployee(
+                "Filter-" + suffix, "First", "first-" + suffix, department);
+        Employee second = createSearchEmployee(
+                "Filter-" + suffix, "Second", "second-" + suffix, department);
+        Department otherDepartment = new Department();
+        otherDepartment.setName("Other-" + suffix);
+        otherDepartment = departmentRepository.saveAndFlush(otherDepartment);
+        createSearchEmployee(
+                "Filter-" + suffix, "Other", "other-" + suffix, otherDepartment);
+
+        mockMvc.perform(get("/api/employees/search")
+                        .param("name", "Filter-" + suffix)
+                        .param("departmentId", department.getId().toString())
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(first.getId()))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true));
+
+        mockMvc.perform(get("/api/employees/search")
+                        .param("name", "Filter-" + suffix)
+                        .param("departmentId", department.getId().toString())
+                        .param("page", "1")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(second.getId()))
+                .andExpect(jsonPath("$.hasPrevious").value(true));
+    }
+
+    private Employee createSearchEmployee(
+            String firstName, String lastName, String emailPrefix, Department department) {
+        Employee employee = new Employee();
+        employee.setFirstName(firstName);
+        employee.setLastName(lastName);
+        employee.setEmail(emailPrefix + "@example.com");
+        employee.setDepartment(department);
+        return employeeRepository.saveAndFlush(employee);
+    }
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\test\java\com\nexora\workforce\service\EmployeeServiceTest.java
+========================================
+
+package com.nexora.workforce.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import com.nexora.workforce.dto.EmployeePageResponseDTO;
+import com.nexora.workforce.dto.EmployeeRequestDTO;
+import com.nexora.workforce.dto.EmployeeResponseDTO;
+import com.nexora.workforce.dto.EmployeeTransferRequestDTO;
+import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.Employee;
+import com.nexora.workforce.entity.EmployeeDepartmentHistory;
+import com.nexora.workforce.exception.DuplicateResourceException;
+import com.nexora.workforce.repository.DepartmentRepository;
+import com.nexora.workforce.repository.EmployeeDepartmentHistoryRepository;
+import com.nexora.workforce.repository.EmployeeRepository;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
+@ExtendWith(MockitoExtension.class)
+class EmployeeServiceTest {
+
+    @Mock
+    private EmployeeRepository employeeRepository;
+
+    @Mock
+    private DepartmentRepository departmentRepository;
+
+    @Mock
+    private EmployeeDepartmentHistoryRepository historyRepository;
+
+    @InjectMocks
+    private EmployeeService employeeService;
+
+    @Test
+    void createsEmployeeWithoutDepartmentWhenLegacyDepartmentIsBlank() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        Department blankDepartment = new Department();
+        blankDepartment.setName("");
+        request.setDepartment(blankDepartment);
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        EmployeeResponseDTO savedEmployee = employeeService.createEmployee(request);
+
+        assertNull(savedEmployee.departmentId());
+        assertNull(savedEmployee.departmentName());
+        verify(employeeRepository).save(any(Employee.class));
+        verifyNoInteractions(departmentRepository);
+    }
+
+    @Test
+    void createsEmployeeWithDepartmentAndReturnsDepartmentSummary() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setFirstName("Ada");
+        request.setLastName("Lovelace");
+        request.setEmail("ada@example.com");
+        Department departmentReference = new Department();
+        departmentReference.setId(7L);
+        request.setDepartment(departmentReference);
+
+        Department department = new Department();
+        department.setId(7L);
+        department.setName("Engineering");
+        when(departmentRepository.findById(7L)).thenReturn(Optional.of(department));
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> {
+                    Employee employee = invocation.getArgument(0);
+                    employee.setId(12L);
+                    return employee;
+                });
+
+        EmployeeResponseDTO response = employeeService.createEmployee(request);
+
+        assertEquals(12L, response.id());
+        assertEquals("Ada", response.firstName());
+        assertEquals(7L, response.departmentId());
+        assertEquals("Engineering", response.departmentName());
+        ArgumentCaptor<EmployeeDepartmentHistory> historyCaptor =
+                ArgumentCaptor.forClass(EmployeeDepartmentHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        assertNull(historyCaptor.getValue().getFromDepartment());
+        assertEquals(7L, historyCaptor.getValue().getToDepartment().getId());
+    }
+
+    @Test
+    void rejectsAnEmployeeIdThatAlreadyExists() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setId(7L);
+        when(employeeRepository.existsById(7L)).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> employeeService.createEmployee(request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void deletesDepartmentHistoryBeforeDeletingEmployee() {
+        Employee employee = new Employee();
+        employee.setId(12L);
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee));
+
+        employeeService.deleteEmployee(12L);
+
+        InOrder deletionOrder = inOrder(historyRepository, employeeRepository);
+        deletionOrder.verify(historyRepository).deleteByEmployee_Id(12L);
+        deletionOrder.verify(employeeRepository).delete(employee);
+    }
+
+    @Test
+    void rejectsAnEmailAlreadyUsedByAnotherEmployee() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setEmail("ada@example.com");
+        when(employeeRepository.existsByEmailIgnoreCase("ada@example.com"))
+                .thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> employeeService.createEmployee(request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void rejectsAnUpdateWithAnIdThatDoesNotMatchThePath() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setId(9L);
+        when(employeeRepository.findById(7L)).thenReturn(Optional.of(new Employee()));
+        when(employeeRepository.existsById(9L)).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> employeeService.updateEmployee(7L, request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void transfersEmployeeAndRecordsEffectiveDepartmentHistory() {
+        Department oldDepartment = new Department();
+        oldDepartment.setId(3L);
+        oldDepartment.setName("Operations");
+        Department newDepartment = new Department();
+        newDepartment.setId(7L);
+        newDepartment.setName("Engineering");
+
+        Employee employee = new Employee();
+        employee.setId(12L);
+        employee.setDepartment(oldDepartment);
+        employee.setHireDate(LocalDate.of(2020, 1, 1));
+
+        EmployeeTransferRequestDTO request =
+                new EmployeeTransferRequestDTO(7L, LocalDate.now().minusDays(1));
+
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee));
+        when(departmentRepository.findById(7L)).thenReturn(Optional.of(newDepartment));
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(historyRepository.findTopByEmployee_IdOrderByEffectiveDateDescIdDesc(12L))
+                .thenReturn(Optional.empty());
+
+        EmployeeResponseDTO response = employeeService.transferEmployee(12L, request);
+
+        ArgumentCaptor<EmployeeDepartmentHistory> historyCaptor =
+                ArgumentCaptor.forClass(EmployeeDepartmentHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        EmployeeDepartmentHistory history = historyCaptor.getValue();
+        assertEquals(3L, history.getFromDepartment().getId());
+        assertEquals(7L, history.getToDepartment().getId());
+        assertEquals(request.effectiveDate(), history.getEffectiveDate());
+        assertEquals(7L, response.departmentId());
+    }
+
+    @Test
+    void rejectsFutureEffectiveTransferDates() {
+        EmployeeTransferRequestDTO request =
+                new EmployeeTransferRequestDTO(7L, LocalDate.now().plusDays(1));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> employeeService.transferEmployee(12L, request));
+
+        verifyNoInteractions(employeeRepository, departmentRepository, historyRepository);
+    }
+
+    @Test
+    void transferringToCurrentDepartmentDoesNotCreateDuplicateHistory() {
+        Department department = new Department();
+        department.setId(7L);
+        Employee employee = new Employee();
+        employee.setId(12L);
+        employee.setDepartment(department);
+
+        EmployeeTransferRequestDTO request =
+                new EmployeeTransferRequestDTO(7L, LocalDate.now());
+
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee));
+        when(departmentRepository.findById(eq(7L))).thenReturn(Optional.of(department));
+
+        EmployeeResponseDTO response = employeeService.transferEmployee(12L, request);
+
+        verify(historyRepository, never()).save(any(EmployeeDepartmentHistory.class));
+        verify(employeeRepository, never()).save(any(Employee.class));
+        assertEquals(7L, response.departmentId());
+    }
+
+    @Test
+    void searchesEmployeesWithNormalizedNameAndPageMetadata() {
+        Department department = new Department();
+        department.setId(7L);
+        department.setName("Engineering");
+        Employee employee = new Employee();
+        employee.setId(15L);
+        employee.setFirstName("Ada");
+        employee.setDepartment(department);
+        Pageable pageable = PageRequest.of(
+                1, 1, Sort.by(Sort.Direction.ASC, "id"));
+        Page<Employee> employees = new PageImpl<>(
+                List.of(employee), pageable, 3);
+        when(employeeRepository.searchEmployees(
+                eq("Ada"), eq(7L), any(Pageable.class)))
+                .thenReturn(employees);
+
+        EmployeePageResponseDTO response =
+                employeeService.searchEmployees(" Ada ", 7L, 1, 1);
+
+        assertEquals(1, response.page());
+        assertEquals(1, response.size());
+        assertEquals(3L, response.totalElements());
+        assertEquals(3, response.totalPages());
+        assertEquals("Engineering", response.content().get(0).departmentName());
+        verify(employeeRepository).searchEmployees(
+                eq("Ada"), eq(7L), any(Pageable.class));
+    }
+
+    @Test
+    void rejectsInvalidSearchPaginationBeforeQueryingRepository() {
+        assertThrows(IllegalArgumentException.class,
+                () -> employeeService.searchEmployees(null, null, 0, 101));
+        verifyNoInteractions(employeeRepository);
+    }
+}
+
+

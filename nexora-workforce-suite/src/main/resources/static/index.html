@@ -20,7 +20,7 @@
 
     <section class="dashboard">
         <div class="card">
-            <h3>Total Employees</h3>
+            <h3>Matching Employees</h3>
             <h2 id="totalEmployees">0</h2>
         </div>
     </section>
@@ -77,18 +77,37 @@
 
         <h2>Employee Records</h2>
 
-        <input type="text" id="searchInput"
-               placeholder="Search by first name">
+        <form id="employeeSearchForm" class="employee-search">
+            <div class="filter-field">
+                <label for="searchInput">Search name</label>
+                <input type="search" id="searchInput"
+                       placeholder="First name, last name, or full name">
+            </div>
 
-        <button type="button" onclick="searchEmployees()">
-            Search
-        </button>
+            <div class="filter-field">
+                <label for="departmentFilter">Department</label>
+                <select id="departmentFilter">
+                    <option value="">All departments</option>
+                </select>
+            </div>
 
-        <button type="button" onclick="loadEmployees()">
-            Show All
-        </button>
+            <div class="filter-field page-size-field">
+                <label for="pageSize">Rows per page</label>
+                <select id="pageSize">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+
+            <button type="submit">Search</button>
+            <button type="button" id="clearFiltersButton">Clear Filters</button>
+        </form>
 
         <p id="message"></p>
+        <p id="employeeSummary" aria-live="polite"></p>
 
         <div class="table-container">
             <table>
@@ -107,6 +126,12 @@
 
                 <tbody id="employeeTable"></tbody>
             </table>
+        </div>
+
+        <div class="pagination-controls">
+            <button type="button" id="previousPageButton">Previous</button>
+            <span id="pageInfo" aria-live="polite">Page 0 of 0</span>
+            <button type="button" id="nextPageButton">Next</button>
         </div>
 
     </section>

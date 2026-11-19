@@ -1,23 +1,26 @@
 
 package com.nexora.workforce.service;
 
+import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
+import com.nexora.workforce.dto.EmployeePageResponseDTO;
 import com.nexora.workforce.dto.EmployeeRequestDTO;
 import com.nexora.workforce.dto.EmployeeResponseDTO;
-import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
 import com.nexora.workforce.dto.EmployeeTransferRequestDTO;
-import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.entity.EmployeeDepartmentHistory;
-import com.nexora.workforce.exception.ResourceNotFoundException;
 import com.nexora.workforce.exception.DuplicateResourceException;
+import com.nexora.workforce.exception.ResourceNotFoundException;
 import com.nexora.workforce.repository.DepartmentRepository;
 import com.nexora.workforce.repository.EmployeeDepartmentHistoryRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
-
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmployeeService {
@@ -35,7 +38,6 @@ public class EmployeeService {
         this.historyRepository = historyRepository;
     }
 
-    // CREATE
     @Transactional
     public EmployeeResponseDTO createEmployee(EmployeeRequestDTO request) {
         if (request.getId() != null) {
@@ -63,14 +65,12 @@ public class EmployeeService {
         return toResponse(savedEmployee);
     }
 
-    // READ ALL
     public List<EmployeeResponseDTO> getAllEmployees() {
         return repository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    // READ BY ID
     public EmployeeResponseDTO getEmployeeById(Long id) {
         return toResponse(findEmployeeEntityById(id));
     }
@@ -82,7 +82,6 @@ public class EmployeeService {
             );
     }
 
-    // UPDATE
     @Transactional
     public EmployeeResponseDTO updateEmployee(
             Long id, EmployeeRequestDTO request) {
@@ -121,7 +120,7 @@ public class EmployeeService {
     public EmployeeResponseDTO transferEmployee(
             Long employeeId, EmployeeTransferRequestDTO request) {
         return toResponse(transferEmployeeEntity(
-                employeeId, request.getDepartmentId(), request.getEffectiveDate()));
+                    employeeId, request.departmentId(), request.effectiveDate()));
     }
 
     @Transactional
@@ -168,7 +167,6 @@ public class EmployeeService {
         }
     }
 
-    // DELETE
     @Transactional
     public void deleteEmployee(Long id) {
         Employee employee = findEmployeeEntityById(id);
@@ -176,11 +174,32 @@ public class EmployeeService {
         repository.delete(employee);
     }
 
-    // SEARCH
-    public List<EmployeeResponseDTO> searchEmployees(String name) {
-        return repository.findByFirstNameContainingIgnoreCase(name).stream()
-                .map(this::toResponse)
-                .toList();
+    public EmployeePageResponseDTO searchEmployees(
+            String name, Long departmentId, int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("Page must be zero or greater");
+        }
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException("Page size must be between 1 and 100");
+        }
+
+        String normalizedName = name == null || name.isBlank()
+                ? null
+                : name.trim();
+        Page<EmployeeResponseDTO> employeePage = repository.searchEmployees(
+                        normalizedName,
+                        departmentId,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")))
+                .map(this::toResponse);
+
+        return new EmployeePageResponseDTO(
+                employeePage.getContent(),
+                employeePage.getNumber(),
+                employeePage.getSize(),
+                employeePage.getTotalElements(),
+                employeePage.getTotalPages(),
+                employeePage.hasNext(),
+                employeePage.hasPrevious());
     }
 
     private Employee toEmployee(EmployeeRequestDTO request) {
@@ -198,38 +217,32 @@ public class EmployeeService {
     }
 
     private EmployeeResponseDTO toResponse(Employee employee) {
-        EmployeeResponseDTO response = new EmployeeResponseDTO();
-        response.setId(employee.getId());
-        response.setFirstName(employee.getFirstName());
-        response.setLastName(employee.getLastName());
-        response.setEmail(employee.getEmail());
-        response.setPhone(employee.getPhone());
-        if (employee.getDepartment() != null) {
-            response.setDepartmentId(employee.getDepartment().getId());
-            response.setDepartmentName(employee.getDepartment().getName());
-        }
-        response.setJobTitle(employee.getJobTitle());
-        response.setSalary(employee.getSalary());
-        response.setHireDate(employee.getHireDate());
-        response.setStatus(employee.getStatus());
-        return response;
+        Department department = employee.getDepartment();
+        return new EmployeeResponseDTO(
+                employee.getId(),
+                employee.getFirstName(),
+                employee.getLastName(),
+                employee.getEmail(),
+                employee.getPhone(),
+                department == null ? null : department.getId(),
+                department == null ? null : department.getName(),
+                employee.getJobTitle(),
+                employee.getSalary(),
+                employee.getHireDate(),
+                employee.getStatus());
     }
 
     private EmployeeDepartmentHistoryResponseDTO toHistoryResponse(
             EmployeeDepartmentHistory history) {
-        EmployeeDepartmentHistoryResponseDTO response =
-                new EmployeeDepartmentHistoryResponseDTO();
-        response.setId(history.getId());
-        response.setEffectiveDate(history.getEffectiveDate());
-        if (history.getFromDepartment() != null) {
-            response.setFromDepartmentId(history.getFromDepartment().getId());
-            response.setFromDepartmentName(history.getFromDepartment().getName());
-        }
-        if (history.getToDepartment() != null) {
-            response.setToDepartmentId(history.getToDepartment().getId());
-            response.setToDepartmentName(history.getToDepartment().getName());
-        }
-        return response;
+        Department fromDepartment = history.getFromDepartment();
+        Department toDepartment = history.getToDepartment();
+        return new EmployeeDepartmentHistoryResponseDTO(
+                history.getId(),
+                fromDepartment == null ? null : fromDepartment.getId(),
+                fromDepartment == null ? null : fromDepartment.getName(),
+                toDepartment == null ? null : toDepartment.getId(),
+                toDepartment == null ? null : toDepartment.getName(),
+                history.getEffectiveDate());
     }
 
     private void recordDepartmentChange(
