@@ -3,6 +3,8 @@ package com.nexora.workforce.controller;
 
 import com.nexora.workforce.dto.EmployeeRequestDTO;
 import com.nexora.workforce.dto.EmployeeResponseDTO;
+import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
+import com.nexora.workforce.dto.EmployeeTransferRequestDTO;
 import com.nexora.workforce.service.EmployeeService;
 
 import org.springframework.http.HttpStatus;
@@ -41,6 +43,19 @@ public class EmployeeController {
     @GetMapping("/{id}")
     public EmployeeResponseDTO getEmployeeById(@PathVariable Long id) {
         return service.getEmployeeById(id);
+    }
+
+    @GetMapping("/{id}/department-history")
+    public List<EmployeeDepartmentHistoryResponseDTO> getDepartmentHistory(
+            @PathVariable Long id) {
+        return service.getDepartmentHistory(id);
+    }
+
+    @PostMapping("/{id}/transfers")
+    public EmployeeResponseDTO transferEmployee(
+            @PathVariable Long id,
+            @Valid @RequestBody EmployeeTransferRequestDTO request) {
+        return service.transferEmployee(id, request);
     }
 
     // UPDATE EMPLOYEE

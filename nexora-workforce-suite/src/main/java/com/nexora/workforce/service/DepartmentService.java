@@ -4,7 +4,7 @@ import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.exception.ResourceNotFoundException;
 import com.nexora.workforce.repository.DepartmentRepository;
-import com.nexora.workforce.repository.EmployeeRepository;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -12,13 +12,13 @@ import org.springframework.stereotype.Service;
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
-    private final EmployeeRepository employeeRepository;
+    private final EmployeeService employeeService;
 
     public DepartmentService(
             DepartmentRepository departmentRepository,
-            EmployeeRepository employeeRepository) {
+            EmployeeService employeeService) {
         this.departmentRepository = departmentRepository;
-        this.employeeRepository = employeeRepository;
+        this.employeeService = employeeService;
     }
 
     public Department createDepartment(Department department) {
@@ -39,10 +39,7 @@ public class DepartmentService {
         Department department = departmentRepository.findById(departmentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Department not found: " + departmentId));
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Employee not found: " + employeeId));
-        employee.setDepartment(department);
-        return employeeRepository.save(employee);
+        return employeeService.transferEmployeeEntity(
+                employeeId, department.getId(), LocalDate.now());
     }
 }

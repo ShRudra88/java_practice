@@ -3,14 +3,20 @@ package com.nexora.workforce.service;
 
 import com.nexora.workforce.dto.EmployeeRequestDTO;
 import com.nexora.workforce.dto.EmployeeResponseDTO;
+import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
+import com.nexora.workforce.dto.EmployeeTransferRequestDTO;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.entity.Department;
+import com.nexora.workforce.entity.EmployeeDepartmentHistory;
 import com.nexora.workforce.exception.ResourceNotFoundException;
 import com.nexora.workforce.exception.DuplicateResourceException;
 import com.nexora.workforce.repository.DepartmentRepository;
+import com.nexora.workforce.repository.EmployeeDepartmentHistoryRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
 
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -18,15 +24,19 @@ public class EmployeeService {
 
     private final EmployeeRepository repository;
     private final DepartmentRepository departmentRepository;
+    private final EmployeeDepartmentHistoryRepository historyRepository;
 
     public EmployeeService(
             EmployeeRepository repository,
-            DepartmentRepository departmentRepository) {
+            DepartmentRepository departmentRepository,
+            EmployeeDepartmentHistoryRepository historyRepository) {
         this.repository = repository;
         this.departmentRepository = departmentRepository;
+        this.historyRepository = historyRepository;
     }
 
     // CREATE
+    @Transactional
     public EmployeeResponseDTO createEmployee(EmployeeRequestDTO request) {
         if (request.getId() != null) {
             if (repository.existsById(request.getId())) {
@@ -40,7 +50,17 @@ public class EmployeeService {
 
         Employee employee = toEmployee(request);
         employee.setDepartment(resolveDepartment(employee.getDepartment()));
-        return toResponse(repository.save(employee));
+        Employee savedEmployee = repository.save(employee);
+        if (savedEmployee.getDepartment() != null) {
+            saveDepartmentHistory(
+                    savedEmployee,
+                    null,
+                    savedEmployee.getDepartment(),
+                    savedEmployee.getHireDate() == null
+                            ? LocalDate.now()
+                            : savedEmployee.getHireDate());
+        }
+        return toResponse(savedEmployee);
     }
 
     // READ ALL
@@ -63,6 +83,7 @@ public class EmployeeService {
     }
 
     // UPDATE
+    @Transactional
     public EmployeeResponseDTO updateEmployee(
             Long id, EmployeeRequestDTO request) {
 
@@ -78,17 +99,63 @@ public class EmployeeService {
         ensureEmailIsAvailable(request.getEmail(), id);
 
         Employee updatedEmployee = toEmployee(request);
+        Department updatedDepartment = resolveDepartment(updatedEmployee.getDepartment());
+        if (!sameDepartment(currentEmployee.getDepartment(), updatedDepartment)) {
+            recordDepartmentChange(
+                    currentEmployee, updatedDepartment, LocalDate.now());
+        }
         currentEmployee.setFirstName(updatedEmployee.getFirstName());
         currentEmployee.setLastName(updatedEmployee.getLastName());
         currentEmployee.setEmail(updatedEmployee.getEmail());
         currentEmployee.setPhone(updatedEmployee.getPhone());
-        currentEmployee.setDepartment(resolveDepartment(updatedEmployee.getDepartment()));
+        currentEmployee.setDepartment(updatedDepartment);
         currentEmployee.setJobTitle(updatedEmployee.getJobTitle());
         currentEmployee.setSalary(updatedEmployee.getSalary());
         currentEmployee.setHireDate(updatedEmployee.getHireDate());
         currentEmployee.setStatus(updatedEmployee.getStatus());
 
         return toResponse(repository.save(currentEmployee));
+    }
+
+    @Transactional
+    public EmployeeResponseDTO transferEmployee(
+            Long employeeId, EmployeeTransferRequestDTO request) {
+        return toResponse(transferEmployeeEntity(
+                employeeId, request.getDepartmentId(), request.getEffectiveDate()));
+    }
+
+    @Transactional
+    public Employee transferEmployeeEntity(
+            Long employeeId, Long departmentId, LocalDate effectiveDate) {
+        if (effectiveDate == null) {
+            throw new IllegalArgumentException("Effective date is required");
+        }
+        if (effectiveDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Effective date must not be in the future");
+        }
+
+        Employee employee = findEmployeeEntityById(employeeId);
+        Department destination = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Department not found: " + departmentId));
+        if (sameDepartment(employee.getDepartment(), destination)) {
+            return employee;
+        }
+        recordDepartmentChange(employee, destination, effectiveDate);
+        employee.setDepartment(destination);
+        return repository.save(employee);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeDepartmentHistoryResponseDTO> getDepartmentHistory(
+            Long employeeId) {
+        findEmployeeEntityById(employeeId);
+        return historyRepository
+                .findByEmployee_IdOrderByEffectiveDateAscIdAsc(employeeId)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
     }
 
     private void ensureEmailIsAvailable(String email, Long employeeId) {
@@ -102,8 +169,10 @@ public class EmployeeService {
     }
 
     // DELETE
+    @Transactional
     public void deleteEmployee(Long id) {
         Employee employee = findEmployeeEntityById(id);
+        historyRepository.deleteByEmployee_Id(id);
         repository.delete(employee);
     }
 
@@ -144,6 +213,66 @@ public class EmployeeService {
         response.setHireDate(employee.getHireDate());
         response.setStatus(employee.getStatus());
         return response;
+    }
+
+    private EmployeeDepartmentHistoryResponseDTO toHistoryResponse(
+            EmployeeDepartmentHistory history) {
+        EmployeeDepartmentHistoryResponseDTO response =
+                new EmployeeDepartmentHistoryResponseDTO();
+        response.setId(history.getId());
+        response.setEffectiveDate(history.getEffectiveDate());
+        if (history.getFromDepartment() != null) {
+            response.setFromDepartmentId(history.getFromDepartment().getId());
+            response.setFromDepartmentName(history.getFromDepartment().getName());
+        }
+        if (history.getToDepartment() != null) {
+            response.setToDepartmentId(history.getToDepartment().getId());
+            response.setToDepartmentName(history.getToDepartment().getName());
+        }
+        return response;
+    }
+
+    private void recordDepartmentChange(
+            Employee employee, Department destination, LocalDate effectiveDate) {
+        if (effectiveDate == null || effectiveDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Effective date must be today or earlier");
+        }
+        if (employee.getHireDate() != null
+                && effectiveDate.isBefore(employee.getHireDate())) {
+            throw new IllegalArgumentException(
+                    "Effective date must not be before the employee's hire date");
+        }
+        historyRepository.findTopByEmployee_IdOrderByEffectiveDateDescIdDesc(
+                        employee.getId())
+                .ifPresent(previous -> {
+                    if (effectiveDate.isBefore(previous.getEffectiveDate())) {
+                        throw new IllegalArgumentException(
+                                "Effective date must not be before the latest department history");
+                    }
+                });
+        saveDepartmentHistory(
+                employee, employee.getDepartment(), destination, effectiveDate);
+    }
+
+    private void saveDepartmentHistory(
+            Employee employee,
+            Department fromDepartment,
+            Department toDepartment,
+            LocalDate effectiveDate) {
+        EmployeeDepartmentHistory history = new EmployeeDepartmentHistory();
+        history.setEmployee(employee);
+        history.setFromDepartment(fromDepartment);
+        history.setToDepartment(toDepartment);
+        history.setEffectiveDate(effectiveDate);
+        historyRepository.save(history);
+    }
+
+    private boolean sameDepartment(Department first, Department second) {
+        return first == second
+                || (first != null && second != null
+                        && first.getId() != null
+                        && first.getId().equals(second.getId()));
     }
 
     private Department resolveDepartment(Department departmentReference) {

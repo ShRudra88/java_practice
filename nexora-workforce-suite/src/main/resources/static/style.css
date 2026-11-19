@@ -114,6 +114,14 @@ th {
     background: #22865b;
 }
 
+.transfer-btn {
+    background: #7353a6;
+}
+
+.history-btn {
+    background: #527b91;
+}
+
 #message {
     font-weight: bold;
 }

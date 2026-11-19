@@ -111,6 +111,39 @@
 
     </section>
 
+    <section id="transferSection" class="form-section" hidden>
+        <h2>Transfer Employee</h2>
+        <p id="transferEmployeeName"></p>
+        <form id="transferForm">
+            <input type="hidden" id="transferEmployeeId">
+
+            <label for="transferDepartment">New Department</label>
+            <select id="transferDepartment" required></select>
+
+            <label for="transferEffectiveDate">Effective Date</label>
+            <input type="date" id="transferEffectiveDate" required>
+
+            <button type="submit">Record Transfer</button>
+            <button type="button" id="cancelTransferButton">Cancel</button>
+        </form>
+    </section>
+
+    <section id="historySection" hidden>
+        <h2 id="historyTitle">Department History</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Effective Date</th>
+                        <th>From Department</th>
+                        <th>To Department</th>
+                    </tr>
+                </thead>
+                <tbody id="departmentHistoryTable"></tbody>
+            </table>
+        </div>
+    </section>
+
 </main>
 
 <script src="script.js"></script>

@@ -1,10 +1,15 @@
 
 const API_URL = "/api/employees";
+const DEPARTMENTS_API_URL = "/api/departments";
 
 const form = document.getElementById("employeeForm");
+const transferForm = document.getElementById("transferForm");
 
 // Load employees when page opens
-document.addEventListener("DOMContentLoaded", loadEmployees);
+document.addEventListener("DOMContentLoaded", function() {
+    loadEmployees();
+    loadDepartments();
+});
 
 // CREATE OR UPDATE
 form.addEventListener("submit", async function(event) {
@@ -78,6 +83,25 @@ async function loadEmployees() {
     }
 }
 
+async function loadDepartments() {
+    try {
+        const response = await fetch(DEPARTMENTS_API_URL);
+        if (!response.ok) {
+            throw new Error("Unable to load departments");
+        }
+
+        const departments = await response.json();
+        const select = document.getElementById("transferDepartment");
+        select.replaceChildren(new Option("Select a department", ""));
+        departments.forEach(department => {
+            select.add(new Option(
+                `${department.name} (ID: ${department.id})`, department.id));
+        });
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
 
 // DISPLAY EMPLOYEES
 function displayEmployees(employees) {
@@ -97,7 +121,7 @@ function displayEmployees(employees) {
             employee.id,
             `${employee.firstName} ${employee.lastName}`,
             employee.email,
-            employee.department?.name || employee.department || "",
+            employee.departmentName || employee.department?.name || employee.department || "",
             employee.jobTitle || "",
             employee.salary ?? "",
             employee.status || ""
@@ -121,7 +145,17 @@ function displayEmployees(employees) {
         deleteButton.className = "delete-btn";
         deleteButton.onclick = () => deleteEmployee(employee.id);
 
-        actionCell.append(editButton, deleteButton);
+        const transferButton = document.createElement("button");
+        transferButton.textContent = "Transfer";
+        transferButton.className = "transfer-btn";
+        transferButton.onclick = () => openTransferForm(employee);
+
+        const historyButton = document.createElement("button");
+        historyButton.textContent = "History";
+        historyButton.className = "history-btn";
+        historyButton.onclick = () => loadDepartmentHistory(employee);
+
+        actionCell.append(editButton, transferButton, historyButton, deleteButton);
         row.appendChild(actionCell);
 
         table.appendChild(row);
@@ -138,7 +172,8 @@ function editEmployee(employee) {
     document.getElementById("email").value = employee.email;
     document.getElementById("phone").value = employee.phone || "";
     document.getElementById("department").value =
-        employee.department?.name || employee.department || "";
+        employee.departmentName || employee.department?.name || employee.department || "";
+    document.getElementById("department").readOnly = true;
     document.getElementById("jobTitle").value = employee.jobTitle || "";
     document.getElementById("salary").value = employee.salary ?? "";
     document.getElementById("hireDate").value = employee.hireDate || "";
@@ -154,6 +189,95 @@ function editEmployee(employee) {
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+function openTransferForm(employee) {
+    const now = new Date();
+    const today = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0")
+    ].join("-");
+    document.getElementById("transferEmployeeId").value = employee.id;
+    document.getElementById("transferEmployeeName").textContent =
+        `Transfer ${employee.firstName} ${employee.lastName}`;
+    document.getElementById("transferEffectiveDate").value = today;
+    document.getElementById("transferEffectiveDate").max = today;
+    document.getElementById("transferDepartment").value = "";
+    document.getElementById("transferSection").hidden = false;
+    document.getElementById("historySection").hidden = true;
+    document.getElementById("transferSection").scrollIntoView({ behavior: "smooth" });
+}
+
+transferForm.addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const employeeId = document.getElementById("transferEmployeeId").value;
+    const request = {
+        departmentId: Number(document.getElementById("transferDepartment").value),
+        effectiveDate: document.getElementById("transferEffectiveDate").value
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Unable to transfer employee");
+        }
+
+        showMessage("Employee transferred successfully!");
+        closeTransferForm();
+        await loadEmployees();
+    } catch (error) {
+        showMessage(error.message);
+    }
+});
+
+async function loadDepartmentHistory(employee) {
+    try {
+        const response = await fetch(
+            `${API_URL}/${employee.id}/department-history`
+        );
+        if (!response.ok) {
+            throw new Error("Unable to load department history");
+        }
+
+        const history = await response.json();
+        const table = document.getElementById("departmentHistoryTable");
+        table.replaceChildren();
+        history.forEach(entry => {
+            const row = document.createElement("tr");
+            [
+                entry.effectiveDate,
+                entry.fromDepartmentName || "Unassigned",
+                entry.toDepartmentName || "Unassigned"
+            ].forEach(value => {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+            table.appendChild(row);
+        });
+        document.getElementById("historyTitle").textContent =
+            `Department History - ${employee.firstName} ${employee.lastName}`;
+        document.getElementById("historySection").hidden = false;
+        document.getElementById("transferSection").hidden = true;
+        document.getElementById("historySection").scrollIntoView({ behavior: "smooth" });
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+function closeTransferForm() {
+    transferForm.reset();
+    document.getElementById("transferSection").hidden = true;
+}
+
+document.getElementById("cancelTransferButton").addEventListener(
+    "click", closeTransferForm);
 
 
 // DELETE EMPLOYEE
@@ -219,6 +343,7 @@ function resetForm() {
     form.reset();
 
     document.getElementById("employeeId").value = "";
+    document.getElementById("department").readOnly = false;
 
     document.getElementById("formTitle").textContent =
         "Add New Employee";
