@@ -1462,18 +1462,15 @@ END;
 
 
 ========================================
-FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\index.html
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\employee-registration.html
 ========================================
-
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Nexora Workforce Suite</title>
-
+    <title>Register Employee | Nexora Workforce Suite</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -1481,10 +1478,109 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
 <header>
     <h1>Nexora Workforce Suite</h1>
     <p>Workforce Management Dashboard</p>
+    <nav aria-label="Main navigation">
+        <a href="index.html">Employees</a>
+        <a href="employee-registration.html" aria-current="page">Register Employee</a>
+    </nav>
 </header>
 
 <main>
+    <section class="form-section">
+        <h2 id="formTitle">Register Employee</h2>
+        <p id="message" role="status" aria-live="polite"></p>
 
+        <form id="employeeForm">
+            <input type="hidden" id="employeeId">
+
+            <div class="form-field">
+                <label for="firstName">First name</label>
+                <input type="text" id="firstName" autocomplete="given-name" required>
+            </div>
+
+            <div class="form-field">
+                <label for="lastName">Last name</label>
+                <input type="text" id="lastName" autocomplete="family-name" required>
+            </div>
+
+            <div class="form-field">
+                <label for="email">Email address</label>
+                <input type="email" id="email" autocomplete="email" required>
+            </div>
+
+            <div class="form-field">
+                <label for="phone">Phone number</label>
+                <input type="tel" id="phone" autocomplete="tel">
+            </div>
+
+            <div class="form-field">
+                <label for="department">Department</label>
+                <select id="department">
+                    <option value="">No department</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="jobTitle">Job title</label>
+                <input type="text" id="jobTitle">
+            </div>
+
+            <div class="form-field">
+                <label for="salary">Salary</label>
+                <input type="number" id="salary" min="0" step="0.01">
+            </div>
+
+            <div class="form-field">
+                <label for="hireDate">Hire date</label>
+                <input type="date" id="hireDate">
+            </div>
+
+            <div class="form-field">
+                <label for="status">Status</label>
+                <select id="status">
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" id="submitButton">Register Employee</button>
+                <button type="button" id="cancelButton" hidden>Cancel</button>
+                <a class="button secondary-button" href="index.html">View Employees</a>
+            </div>
+        </form>
+    </section>
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\index.html
+========================================
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employees | Nexora Workforce Suite</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Nexora Workforce Suite</h1>
+    <p>Workforce Management Dashboard</p>
+    <nav aria-label="Main navigation">
+        <a href="index.html" aria-current="page">Employees</a>
+        <a href="employee-registration.html">Register Employee</a>
+    </nav>
+</header>
+
+<main>
     <section class="dashboard">
         <div class="card">
             <h3>Matching Employees</h3>
@@ -1492,56 +1588,7 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
         </div>
     </section>
 
-    <section class="form-section">
-        <h2 id="formTitle">Add New Employee</h2>
-
-        <form id="employeeForm">
-
-            <input type="hidden" id="employeeId">
-
-            <input type="text" id="firstName"
-                   placeholder="First Name" required>
-
-            <input type="text" id="lastName"
-                   placeholder="Last Name" required>
-
-            <input type="email" id="email"
-                   placeholder="Email Address" required>
-
-            <input type="text" id="phone"
-                   placeholder="Phone Number">
-
-            <input type="text" id="department"
-                   placeholder="Department">
-
-            <input type="text" id="jobTitle"
-                   placeholder="Job Title">
-
-            <input type="number" id="salary"
-                   placeholder="Salary" min="0" step="0.01">
-
-            <label for="hireDate">Hire Date</label>
-            <input type="date" id="hireDate">
-
-            <select id="status">
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-            </select>
-
-            <button type="submit" id="submitButton">
-                Add Employee
-            </button>
-
-            <button type="button" id="cancelButton"
-                    onclick="resetForm()" hidden>
-                Cancel Edit
-            </button>
-
-        </form>
-    </section>
-
     <section class="table-section">
-
         <h2>Employee Records</h2>
 
         <form id="employeeSearchForm" class="employee-search">
@@ -1573,7 +1620,7 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
             <button type="button" id="clearFiltersButton">Clear Filters</button>
         </form>
 
-        <p id="message"></p>
+        <p id="message" role="status" aria-live="polite"></p>
         <p id="employeeSummary" aria-live="polite"></p>
 
         <div class="table-container">
@@ -1590,7 +1637,6 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
                         <th>Actions</th>
                     </tr>
                 </thead>
-
                 <tbody id="employeeTable"></tbody>
             </table>
         </div>
@@ -1600,7 +1646,6 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
             <span id="pageInfo" aria-live="polite">Page 0 of 0</span>
             <button type="button" id="nextPageButton">Next</button>
         </div>
-
     </section>
 
     <section id="transferSection" class="form-section" hidden>
@@ -1635,11 +1680,9 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
             </table>
         </div>
     </section>
-
 </main>
 
 <script src="script.js"></script>
-
 </body>
 </html>
 
@@ -1656,6 +1699,7 @@ const DEPARTMENTS_API_URL = "/api/departments";
 const form = document.getElementById("employeeForm");
 const transferForm = document.getElementById("transferForm");
 const employeeSearchForm = document.getElementById("employeeSearchForm");
+const employeeTable = document.getElementById("employeeTable");
 let currentPage = 0;
 let pageSize = 10;
 let totalPages = 0;
@@ -1663,76 +1707,126 @@ let activeNameFilter = "";
 let activeDepartmentFilter = "";
 
 document.addEventListener("DOMContentLoaded", function() {
-    loadEmployees(0);
-    loadDepartments();
+    if (employeeTable) {
+        loadEmployees(0);
+        if (new URLSearchParams(window.location.search).has("updated")) {
+            showMessage("Employee updated successfully!");
+        }
+    }
+    loadDepartments().then(function() {
+        if (form) {
+            initializeEmployeeForm();
+        }
+    });
 });
 
-employeeSearchForm.addEventListener("submit", searchEmployees);
-document.getElementById("clearFiltersButton").addEventListener(
-    "click", clearEmployeeFilters);
-document.getElementById("pageSize").addEventListener("change", function(event) {
-    pageSize = Number(event.target.value);
-    loadEmployees(0);
-});
-document.getElementById("previousPageButton").addEventListener("click", function() {
-    if (currentPage > 0) {
-        loadEmployees(currentPage - 1);
-    }
-});
-document.getElementById("nextPageButton").addEventListener("click", function() {
-    if (currentPage + 1 < totalPages) {
-        loadEmployees(currentPage + 1);
-    }
-});
+if (employeeSearchForm) {
+    employeeSearchForm.addEventListener("submit", searchEmployees);
+    document.getElementById("clearFiltersButton").addEventListener(
+        "click", clearEmployeeFilters);
+    document.getElementById("pageSize").addEventListener("change", function(event) {
+        pageSize = Number(event.target.value);
+        loadEmployees(0);
+    });
+    document.getElementById("previousPageButton").addEventListener("click", function() {
+        if (currentPage > 0) {
+            loadEmployees(currentPage - 1);
+        }
+    });
+    document.getElementById("nextPageButton").addEventListener("click", function() {
+        if (currentPage + 1 < totalPages) {
+            loadEmployees(currentPage + 1);
+        }
+    });
+}
 
-form.addEventListener("submit", async function(event) {
+if (form) {
+    form.addEventListener("submit", submitEmployeeForm);
+    document.getElementById("cancelButton").addEventListener("click", function() {
+        resetForm();
+        window.history.replaceState(null, "", "employee-registration.html");
+    });
+}
+
+async function submitEmployeeForm(event) {
     event.preventDefault();
 
     const id = document.getElementById("employeeId").value;
-
+    const departmentId = document.getElementById("department").value;
+    const salaryValue = document.getElementById("salary").value;
     const employee = {
-        firstName: document.getElementById("firstName").value,
-        lastName: document.getElementById("lastName").value,
-        email: document.getElementById("email").value,
-        phone: document.getElementById("phone").value,
-        department: document.getElementById("department").value,
-        jobTitle: document.getElementById("jobTitle").value,
-        salary: Number(document.getElementById("salary").value || 0),
+        firstName: document.getElementById("firstName").value.trim(),
+        lastName: document.getElementById("lastName").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        department: departmentId ? { id: Number(departmentId) } : null,
+        jobTitle: document.getElementById("jobTitle").value.trim(),
+        salary: salaryValue === "" ? null : Number(salaryValue),
         hireDate: document.getElementById("hireDate").value || null,
         status: document.getElementById("status").value
     };
 
-    const method = id ? "PUT" : "POST";
-
-    const url = id ? `${API_URL}/${id}` : API_URL;
-
     try {
-
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                "Content-Type": "application/json"
-            },
+        const response = await fetch(
+            id ? `${API_URL}/${encodeURIComponent(id)}` : API_URL, {
+            method: id ? "PUT" : "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(employee)
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || "Request failed");
+            let errorMessage = "Unable to save employee";
+            try {
+                const error = await response.json();
+                errorMessage = error.error || error.message || errorMessage;
+            } catch (error) {
+                errorMessage = `Unable to save employee (${response.status})`;
+            }
+            throw new Error(errorMessage);
         }
 
-        showMessage(
-            id ? "Employee updated successfully!" :
-                 "Employee added successfully!"
-        );
-
-        resetForm();
-        loadEmployees(0);
-
+        showMessage(id ? "Employee updated successfully!" :
+            "Employee registered successfully!");
+        if (id) {
+            window.location.href = "index.html?updated=1";
+        } else {
+            resetForm();
+        }
     } catch (error) {
         showMessage(error.message);
     }
-});
+}
+
+async function initializeEmployeeForm() {
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (!id) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/${encodeURIComponent(id)}`);
+        if (!response.ok) {
+            throw new Error("Unable to load employee");
+        }
+
+        const employee = await response.json();
+        document.getElementById("employeeId").value = employee.id;
+        document.getElementById("firstName").value = employee.firstName;
+        document.getElementById("lastName").value = employee.lastName;
+        document.getElementById("email").value = employee.email;
+        document.getElementById("phone").value = employee.phone || "";
+        document.getElementById("department").value = employee.departmentId || "";
+        document.getElementById("jobTitle").value = employee.jobTitle || "";
+        document.getElementById("salary").value = employee.salary ?? "";
+        document.getElementById("hireDate").value = employee.hireDate || "";
+        document.getElementById("status").value = employee.status || "ACTIVE";
+        document.getElementById("formTitle").textContent = "Update Employee";
+        document.getElementById("submitButton").textContent = "Update Employee";
+        document.getElementById("cancelButton").hidden = false;
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
 
 
 async function loadEmployees(page = currentPage) {
@@ -1772,13 +1866,28 @@ async function loadDepartments() {
 
         const departments = await response.json();
         const select = document.getElementById("transferDepartment");
-        select.replaceChildren(new Option("Select a department", ""));
+        if (select) {
+            select.replaceChildren(new Option("Select a department", ""));
+        }
+        const employeeDepartment = document.getElementById("department");
+        if (employeeDepartment) {
+            employeeDepartment.replaceChildren(new Option("No department", ""));
+        }
         const departmentFilter = document.getElementById("departmentFilter");
-        departmentFilter.replaceChildren(new Option("All departments", ""));
+        if (departmentFilter) {
+            departmentFilter.replaceChildren(new Option("All departments", ""));
+        }
         departments.forEach(department => {
             const label = `${department.name} (ID: ${department.id})`;
-            select.add(new Option(label, department.id));
-            departmentFilter.add(new Option(label, department.id));
+            if (select) {
+                select.add(new Option(label, department.id));
+            }
+            if (employeeDepartment) {
+                employeeDepartment.add(new Option(department.name, department.id));
+            }
+            if (departmentFilter) {
+                departmentFilter.add(new Option(label, department.id));
+            }
         });
     } catch (error) {
         showMessage(error.message);
@@ -1848,27 +1957,8 @@ function displayEmployees(employees, matchingEmployees) {
 
 
 function editEmployee(employee) {
-    document.getElementById("employeeId").value = employee.id;
-    document.getElementById("firstName").value = employee.firstName;
-    document.getElementById("lastName").value = employee.lastName;
-    document.getElementById("email").value = employee.email;
-    document.getElementById("phone").value = employee.phone || "";
-    document.getElementById("department").value = employee.departmentName || "";
-    document.getElementById("department").readOnly = true;
-    document.getElementById("jobTitle").value = employee.jobTitle || "";
-    document.getElementById("salary").value = employee.salary ?? "";
-    document.getElementById("hireDate").value = employee.hireDate || "";
-    document.getElementById("status").value = employee.status || "ACTIVE";
-
-    document.getElementById("formTitle").textContent =
-        "Update Employee";
-
-    document.getElementById("submitButton").textContent =
-        "Update Employee";
-
-    document.getElementById("cancelButton").hidden = false;
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.location.href =
+        `employee-registration.html?id=${encodeURIComponent(employee.id)}`;
 }
 
 function openTransferForm(employee) {
@@ -1889,33 +1979,38 @@ function openTransferForm(employee) {
     document.getElementById("transferSection").scrollIntoView({ behavior: "smooth" });
 }
 
-transferForm.addEventListener("submit", async function(event) {
-    event.preventDefault();
+if (transferForm) {
+    transferForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
 
-    const employeeId = document.getElementById("transferEmployeeId").value;
-    const request = {
-        departmentId: Number(document.getElementById("transferDepartment").value),
-        effectiveDate: document.getElementById("transferEffectiveDate").value
-    };
+        const employeeId = document.getElementById("transferEmployeeId").value;
+        const request = {
+            departmentId: Number(document.getElementById("transferDepartment").value),
+            effectiveDate: document.getElementById("transferEffectiveDate").value
+        };
 
-    try {
-        const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(request)
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || "Unable to transfer employee");
+        try {
+            const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(request)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Unable to transfer employee");
+            }
+
+            showMessage("Employee transferred successfully!");
+            closeTransferForm();
+            await loadEmployees(0);
+        } catch (error) {
+            showMessage(error.message);
         }
+    });
 
-        showMessage("Employee transferred successfully!");
-        closeTransferForm();
-        await loadEmployees(0);
-    } catch (error) {
-        showMessage(error.message);
-    }
-});
+    document.getElementById("cancelTransferButton").addEventListener(
+        "click", closeTransferForm);
+}
 
 async function loadDepartmentHistory(employee) {
     try {
@@ -1956,10 +2051,6 @@ function closeTransferForm() {
     transferForm.reset();
     document.getElementById("transferSection").hidden = true;
 }
-
-document.getElementById("cancelTransferButton").addEventListener(
-    "click", closeTransferForm);
-
 
 async function deleteEmployee(id) {
     if (!confirm("Are you sure you want to delete this employee?")) {
@@ -2016,13 +2107,12 @@ function resetForm() {
     form.reset();
 
     document.getElementById("employeeId").value = "";
-    document.getElementById("department").readOnly = false;
 
     document.getElementById("formTitle").textContent =
-        "Add New Employee";
+        "Register Employee";
 
     document.getElementById("submitButton").textContent =
-        "Add Employee";
+        "Register Employee";
 
     document.getElementById("cancelButton").hidden = true;
 }
@@ -2063,6 +2153,24 @@ header h1 {
 header p {
     margin-bottom: 0;
     color: #d8e5f5;
+}
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+nav a {
+    color: white;
+    padding: 9px 13px;
+    border-radius: 5px;
+    text-decoration: none;
+}
+
+nav a:hover, nav a[aria-current="page"] {
+    background: #245a9b;
 }
 
 main {
@@ -2110,6 +2218,36 @@ form {
 .filter-field label {
     display: block;
     margin-bottom: 6px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.button {
+    display: inline-block;
+    padding: 11px 16px;
+    border-radius: 5px;
+    background: #245a9b;
+    color: white;
+    text-decoration: none;
+}
+
+.button:hover {
+    background: #163e70;
+}
+
+.secondary-button {
+    background: #527b91;
 }
 
 .page-size-field {

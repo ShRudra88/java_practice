@@ -1,12 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Nexora Workforce Suite</title>
-
+    <title>Employees | Nexora Workforce Suite</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,10 +11,13 @@
 <header>
     <h1>Nexora Workforce Suite</h1>
     <p>Workforce Management Dashboard</p>
+    <nav aria-label="Main navigation">
+        <a href="index.html" aria-current="page">Employees</a>
+        <a href="employee-registration.html">Register Employee</a>
+    </nav>
 </header>
 
 <main>
-
     <section class="dashboard">
         <div class="card">
             <h3>Matching Employees</h3>
@@ -25,56 +25,7 @@
         </div>
     </section>
 
-    <section class="form-section">
-        <h2 id="formTitle">Add New Employee</h2>
-
-        <form id="employeeForm">
-
-            <input type="hidden" id="employeeId">
-
-            <input type="text" id="firstName"
-                   placeholder="First Name" required>
-
-            <input type="text" id="lastName"
-                   placeholder="Last Name" required>
-
-            <input type="email" id="email"
-                   placeholder="Email Address" required>
-
-            <input type="text" id="phone"
-                   placeholder="Phone Number">
-
-            <input type="text" id="department"
-                   placeholder="Department">
-
-            <input type="text" id="jobTitle"
-                   placeholder="Job Title">
-
-            <input type="number" id="salary"
-                   placeholder="Salary" min="0" step="0.01">
-
-            <label for="hireDate">Hire Date</label>
-            <input type="date" id="hireDate">
-
-            <select id="status">
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-            </select>
-
-            <button type="submit" id="submitButton">
-                Add Employee
-            </button>
-
-            <button type="button" id="cancelButton"
-                    onclick="resetForm()" hidden>
-                Cancel Edit
-            </button>
-
-        </form>
-    </section>
-
     <section class="table-section">
-
         <h2>Employee Records</h2>
 
         <form id="employeeSearchForm" class="employee-search">
@@ -106,7 +57,7 @@
             <button type="button" id="clearFiltersButton">Clear Filters</button>
         </form>
 
-        <p id="message"></p>
+        <p id="message" role="status" aria-live="polite"></p>
         <p id="employeeSummary" aria-live="polite"></p>
 
         <div class="table-container">
@@ -123,7 +74,6 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-
                 <tbody id="employeeTable"></tbody>
             </table>
         </div>
@@ -133,7 +83,6 @@
             <span id="pageInfo" aria-live="polite">Page 0 of 0</span>
             <button type="button" id="nextPageButton">Next</button>
         </div>
-
     </section>
 
     <section id="transferSection" class="form-section" hidden>
@@ -168,10 +117,8 @@
             </table>
         </div>
     </section>
-
 </main>
 
 <script src="script.js"></script>
-
 </body>
 </html>

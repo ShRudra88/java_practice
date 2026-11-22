@@ -5,6 +5,7 @@ const DEPARTMENTS_API_URL = "/api/departments";
 const form = document.getElementById("employeeForm");
 const transferForm = document.getElementById("transferForm");
 const employeeSearchForm = document.getElementById("employeeSearchForm");
+const employeeTable = document.getElementById("employeeTable");
 let currentPage = 0;
 let pageSize = 10;
 let totalPages = 0;
@@ -12,76 +13,126 @@ let activeNameFilter = "";
 let activeDepartmentFilter = "";
 
 document.addEventListener("DOMContentLoaded", function() {
-    loadEmployees(0);
-    loadDepartments();
+    if (employeeTable) {
+        loadEmployees(0);
+        if (new URLSearchParams(window.location.search).has("updated")) {
+            showMessage("Employee updated successfully!");
+        }
+    }
+    loadDepartments().then(function() {
+        if (form) {
+            initializeEmployeeForm();
+        }
+    });
 });
 
-employeeSearchForm.addEventListener("submit", searchEmployees);
-document.getElementById("clearFiltersButton").addEventListener(
-    "click", clearEmployeeFilters);
-document.getElementById("pageSize").addEventListener("change", function(event) {
-    pageSize = Number(event.target.value);
-    loadEmployees(0);
-});
-document.getElementById("previousPageButton").addEventListener("click", function() {
-    if (currentPage > 0) {
-        loadEmployees(currentPage - 1);
-    }
-});
-document.getElementById("nextPageButton").addEventListener("click", function() {
-    if (currentPage + 1 < totalPages) {
-        loadEmployees(currentPage + 1);
-    }
-});
+if (employeeSearchForm) {
+    employeeSearchForm.addEventListener("submit", searchEmployees);
+    document.getElementById("clearFiltersButton").addEventListener(
+        "click", clearEmployeeFilters);
+    document.getElementById("pageSize").addEventListener("change", function(event) {
+        pageSize = Number(event.target.value);
+        loadEmployees(0);
+    });
+    document.getElementById("previousPageButton").addEventListener("click", function() {
+        if (currentPage > 0) {
+            loadEmployees(currentPage - 1);
+        }
+    });
+    document.getElementById("nextPageButton").addEventListener("click", function() {
+        if (currentPage + 1 < totalPages) {
+            loadEmployees(currentPage + 1);
+        }
+    });
+}
 
-form.addEventListener("submit", async function(event) {
+if (form) {
+    form.addEventListener("submit", submitEmployeeForm);
+    document.getElementById("cancelButton").addEventListener("click", function() {
+        resetForm();
+        window.history.replaceState(null, "", "employee-registration.html");
+    });
+}
+
+async function submitEmployeeForm(event) {
     event.preventDefault();
 
     const id = document.getElementById("employeeId").value;
-
+    const departmentId = document.getElementById("department").value;
+    const salaryValue = document.getElementById("salary").value;
     const employee = {
-        firstName: document.getElementById("firstName").value,
-        lastName: document.getElementById("lastName").value,
-        email: document.getElementById("email").value,
-        phone: document.getElementById("phone").value,
-        department: document.getElementById("department").value,
-        jobTitle: document.getElementById("jobTitle").value,
-        salary: Number(document.getElementById("salary").value || 0),
+        firstName: document.getElementById("firstName").value.trim(),
+        lastName: document.getElementById("lastName").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        department: departmentId ? { id: Number(departmentId) } : null,
+        jobTitle: document.getElementById("jobTitle").value.trim(),
+        salary: salaryValue === "" ? null : Number(salaryValue),
         hireDate: document.getElementById("hireDate").value || null,
         status: document.getElementById("status").value
     };
 
-    const method = id ? "PUT" : "POST";
-
-    const url = id ? `${API_URL}/${id}` : API_URL;
-
     try {
-
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                "Content-Type": "application/json"
-            },
+        const response = await fetch(
+            id ? `${API_URL}/${encodeURIComponent(id)}` : API_URL, {
+            method: id ? "PUT" : "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(employee)
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || "Request failed");
+            let errorMessage = "Unable to save employee";
+            try {
+                const error = await response.json();
+                errorMessage = error.error || error.message || errorMessage;
+            } catch (error) {
+                errorMessage = `Unable to save employee (${response.status})`;
+            }
+            throw new Error(errorMessage);
         }
 
-        showMessage(
-            id ? "Employee updated successfully!" :
-                 "Employee added successfully!"
-        );
-
-        resetForm();
-        loadEmployees(0);
-
+        showMessage(id ? "Employee updated successfully!" :
+            "Employee registered successfully!");
+        if (id) {
+            window.location.href = "index.html?updated=1";
+        } else {
+            resetForm();
+        }
     } catch (error) {
         showMessage(error.message);
     }
-});
+}
+
+async function initializeEmployeeForm() {
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (!id) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/${encodeURIComponent(id)}`);
+        if (!response.ok) {
+            throw new Error("Unable to load employee");
+        }
+
+        const employee = await response.json();
+        document.getElementById("employeeId").value = employee.id;
+        document.getElementById("firstName").value = employee.firstName;
+        document.getElementById("lastName").value = employee.lastName;
+        document.getElementById("email").value = employee.email;
+        document.getElementById("phone").value = employee.phone || "";
+        document.getElementById("department").value = employee.departmentId || "";
+        document.getElementById("jobTitle").value = employee.jobTitle || "";
+        document.getElementById("salary").value = employee.salary ?? "";
+        document.getElementById("hireDate").value = employee.hireDate || "";
+        document.getElementById("status").value = employee.status || "ACTIVE";
+        document.getElementById("formTitle").textContent = "Update Employee";
+        document.getElementById("submitButton").textContent = "Update Employee";
+        document.getElementById("cancelButton").hidden = false;
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
 
 
 async function loadEmployees(page = currentPage) {
@@ -121,13 +172,28 @@ async function loadDepartments() {
 
         const departments = await response.json();
         const select = document.getElementById("transferDepartment");
-        select.replaceChildren(new Option("Select a department", ""));
+        if (select) {
+            select.replaceChildren(new Option("Select a department", ""));
+        }
+        const employeeDepartment = document.getElementById("department");
+        if (employeeDepartment) {
+            employeeDepartment.replaceChildren(new Option("No department", ""));
+        }
         const departmentFilter = document.getElementById("departmentFilter");
-        departmentFilter.replaceChildren(new Option("All departments", ""));
+        if (departmentFilter) {
+            departmentFilter.replaceChildren(new Option("All departments", ""));
+        }
         departments.forEach(department => {
             const label = `${department.name} (ID: ${department.id})`;
-            select.add(new Option(label, department.id));
-            departmentFilter.add(new Option(label, department.id));
+            if (select) {
+                select.add(new Option(label, department.id));
+            }
+            if (employeeDepartment) {
+                employeeDepartment.add(new Option(department.name, department.id));
+            }
+            if (departmentFilter) {
+                departmentFilter.add(new Option(label, department.id));
+            }
         });
     } catch (error) {
         showMessage(error.message);
@@ -197,27 +263,8 @@ function displayEmployees(employees, matchingEmployees) {
 
 
 function editEmployee(employee) {
-    document.getElementById("employeeId").value = employee.id;
-    document.getElementById("firstName").value = employee.firstName;
-    document.getElementById("lastName").value = employee.lastName;
-    document.getElementById("email").value = employee.email;
-    document.getElementById("phone").value = employee.phone || "";
-    document.getElementById("department").value = employee.departmentName || "";
-    document.getElementById("department").readOnly = true;
-    document.getElementById("jobTitle").value = employee.jobTitle || "";
-    document.getElementById("salary").value = employee.salary ?? "";
-    document.getElementById("hireDate").value = employee.hireDate || "";
-    document.getElementById("status").value = employee.status || "ACTIVE";
-
-    document.getElementById("formTitle").textContent =
-        "Update Employee";
-
-    document.getElementById("submitButton").textContent =
-        "Update Employee";
-
-    document.getElementById("cancelButton").hidden = false;
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.location.href =
+        `employee-registration.html?id=${encodeURIComponent(employee.id)}`;
 }
 
 function openTransferForm(employee) {
@@ -238,33 +285,38 @@ function openTransferForm(employee) {
     document.getElementById("transferSection").scrollIntoView({ behavior: "smooth" });
 }
 
-transferForm.addEventListener("submit", async function(event) {
-    event.preventDefault();
+if (transferForm) {
+    transferForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
 
-    const employeeId = document.getElementById("transferEmployeeId").value;
-    const request = {
-        departmentId: Number(document.getElementById("transferDepartment").value),
-        effectiveDate: document.getElementById("transferEffectiveDate").value
-    };
+        const employeeId = document.getElementById("transferEmployeeId").value;
+        const request = {
+            departmentId: Number(document.getElementById("transferDepartment").value),
+            effectiveDate: document.getElementById("transferEffectiveDate").value
+        };
 
-    try {
-        const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(request)
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || "Unable to transfer employee");
+        try {
+            const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(request)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Unable to transfer employee");
+            }
+
+            showMessage("Employee transferred successfully!");
+            closeTransferForm();
+            await loadEmployees(0);
+        } catch (error) {
+            showMessage(error.message);
         }
+    });
 
-        showMessage("Employee transferred successfully!");
-        closeTransferForm();
-        await loadEmployees(0);
-    } catch (error) {
-        showMessage(error.message);
-    }
-});
+    document.getElementById("cancelTransferButton").addEventListener(
+        "click", closeTransferForm);
+}
 
 async function loadDepartmentHistory(employee) {
     try {
@@ -305,10 +357,6 @@ function closeTransferForm() {
     transferForm.reset();
     document.getElementById("transferSection").hidden = true;
 }
-
-document.getElementById("cancelTransferButton").addEventListener(
-    "click", closeTransferForm);
-
 
 async function deleteEmployee(id) {
     if (!confirm("Are you sure you want to delete this employee?")) {
@@ -365,13 +413,12 @@ function resetForm() {
     form.reset();
 
     document.getElementById("employeeId").value = "";
-    document.getElementById("department").readOnly = false;
 
     document.getElementById("formTitle").textContent =
-        "Add New Employee";
+        "Register Employee";
 
     document.getElementById("submitButton").textContent =
-        "Add Employee";
+        "Register Employee";
 
     document.getElementById("cancelButton").hidden = true;
 }
