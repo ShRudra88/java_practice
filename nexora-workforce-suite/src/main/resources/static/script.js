@@ -137,6 +137,11 @@ async function initializeEmployeeForm() {
 
 async function loadEmployees(page = currentPage) {
     try {
+        const table = document.getElementById("employeeTable");
+        table.replaceChildren();
+        table.innerHTML =
+            '<tr><td class="loading-row" colspan="8">Loading employees...</td></tr>';
+        setPaginationLoading(true);
         const parameters = new URLSearchParams({
             page: String(page),
             size: String(pageSize)
@@ -160,6 +165,7 @@ async function loadEmployees(page = currentPage) {
         updatePagination();
     } catch (error) {
         showMessage(error.message);
+        setPaginationLoading(false);
     }
 }
 
@@ -204,6 +210,7 @@ async function loadDepartments() {
 function displayEmployees(employees, matchingEmployees) {
     const table = document.getElementById("employeeTable");
     table.replaceChildren();
+    setPaginationLoading(false);
 
     document.getElementById("totalEmployees").textContent = matchingEmployees;
     const firstResult = matchingEmployees === 0
@@ -212,6 +219,17 @@ function displayEmployees(employees, matchingEmployees) {
     const lastResult = Math.min((currentPage + 1) * pageSize, matchingEmployees);
     document.getElementById("employeeSummary").textContent =
         `Showing ${firstResult}-${lastResult} of ${matchingEmployees} employees`;
+
+    if (employees.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 8;
+        cell.className = "empty-row";
+        cell.textContent = "No employees match the current filters.";
+        row.appendChild(cell);
+        table.appendChild(row);
+        return;
+    }
 
     employees.forEach(employee => {
         const row = document.createElement("tr");
@@ -222,8 +240,7 @@ function displayEmployees(employees, matchingEmployees) {
             employee.email,
             employee.departmentName || "",
             employee.jobTitle || "",
-            employee.salary ?? "",
-            employee.status || ""
+            formatSalary(employee.salary)
         ];
 
         values.forEach(value => {
@@ -232,26 +249,41 @@ function displayEmployees(employees, matchingEmployees) {
             row.appendChild(cell);
         });
 
+        const statusCell = document.createElement("td");
+        const status = employee.status || "INACTIVE";
+        const statusBadge = document.createElement("span");
+        statusBadge.className =
+            `status-badge ${status === "ACTIVE" ? "status-active" : "status-inactive"}`;
+        statusBadge.textContent =
+            status.charAt(0) + status.slice(1).toLowerCase();
+        statusCell.appendChild(statusBadge);
+        row.appendChild(statusCell);
+
         const actionCell = document.createElement("td");
+        actionCell.className = "action-cell";
 
         const editButton = document.createElement("button");
         editButton.textContent = "Edit";
         editButton.className = "edit-btn";
+        editButton.type = "button";
         editButton.onclick = () => editEmployee(employee);
 
         const deleteButton = document.createElement("button");
         deleteButton.textContent = "Delete";
         deleteButton.className = "delete-btn";
+        deleteButton.type = "button";
         deleteButton.onclick = () => deleteEmployee(employee.id);
 
         const transferButton = document.createElement("button");
         transferButton.textContent = "Transfer";
         transferButton.className = "transfer-btn";
+        transferButton.type = "button";
         transferButton.onclick = () => openTransferForm(employee);
 
         const historyButton = document.createElement("button");
         historyButton.textContent = "History";
         historyButton.className = "history-btn";
+        historyButton.type = "button";
         historyButton.onclick = () => loadDepartmentHistory(employee);
 
         actionCell.append(editButton, transferButton, historyButton, deleteButton);
@@ -374,8 +406,10 @@ async function deleteEmployee(id) {
         }
 
         showMessage("Employee deleted successfully!");
-
-        loadEmployees(0);
+        const employeeRows = document.querySelectorAll("#employeeTable tr");
+        const deletingOnlyPageRow =
+            currentPage > 0 && employeeRows.length === 1;
+        loadEmployees(deletingOnlyPageRow ? currentPage - 1 : currentPage);
 
     } catch (error) {
         showMessage(error.message);
@@ -406,6 +440,22 @@ function updatePagination() {
         currentPage === 0 || totalPages === 0;
     document.getElementById("nextPageButton").disabled =
         currentPage + 1 >= totalPages;
+}
+
+function setPaginationLoading(isLoading) {
+    document.getElementById("previousPageButton").disabled = isLoading;
+    document.getElementById("nextPageButton").disabled = isLoading;
+}
+
+function formatSalary(salary) {
+    if (salary === null || salary === undefined || salary === "") {
+        return "Not set";
+    }
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2
+    }).format(Number(salary));
 }
 
 

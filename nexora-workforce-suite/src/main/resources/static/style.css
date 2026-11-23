@@ -3,33 +3,55 @@
     box-sizing: border-box;
 }
 
+:root {
+    --navy: #17365d;
+    --blue: #245a9b;
+    --blue-soft: #edf4fc;
+    --ink: #263247;
+    --muted: #667085;
+    --line: #dde5ef;
+}
+
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f3f6fb;
-    color: #263247;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background: #f4f7fb;
+    color: var(--ink);
 }
 
 header {
-    background: #183b68;
+    background: linear-gradient(135deg, #183b68, #245a9b);
     color: white;
     padding: 24px 5%;
+    box-shadow: 0 2px 12px rgba(20, 49, 87, 0.16);
 }
 
-header h1 {
+.header-content {
+    max-width: 1250px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.header-content h1 {
+    margin: 2px 0 0;
+    font-size: 28px;
+}
+
+.eyebrow {
     margin: 0;
-}
-
-header p {
-    margin-bottom: 0;
-    color: #d8e5f5;
+    color: #cfe0f5;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
 }
 
 nav {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-top: 20px;
 }
 
 nav a {
@@ -40,7 +62,7 @@ nav a {
 }
 
 nav a:hover, nav a[aria-current="page"] {
-    background: #245a9b;
+    background: rgba(255, 255, 255, 0.16);
 }
 
 main {
@@ -51,21 +73,31 @@ main {
 
 section {
     background: white;
-    padding: 22px;
+    padding: 24px;
     margin-bottom: 24px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px #0000000d;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(34, 70, 113, 0.06);
 }
 
 .card {
-    background: #e5efff;
-    padding: 15px;
+    background: var(--blue-soft);
+    border-left: 4px solid var(--blue);
+    padding: 16px 20px;
     border-radius: 8px;
-    width: 240px;
+    min-width: 220px;
 }
 
-.card h2 {
-    color: #183b68;
+.card-label {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.card strong {
+    display: block;
+    color: var(--navy);
     font-size: 32px;
 }
 
@@ -138,10 +170,17 @@ form {
 }
 
 input, select {
-    padding: 12px;
-    border: 1px solid #ccd4df;
-    border-radius: 5px;
+    padding: 11px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
     width: 100%;
+    background: white;
+    color: var(--ink);
+}
+
+input:focus, select:focus, button:focus, a:focus {
+    outline: 3px solid rgba(36, 90, 155, 0.18);
+    outline-offset: 2px;
 }
 
 label {
@@ -151,14 +190,19 @@ label {
 button {
     background: #245a9b;
     color: white;
-    padding: 11px 16px;
+    padding: 10px 14px;
     border: none;
-    border-radius: 5px;
+    border-radius: 7px;
     cursor: pointer;
+    transition: background 150ms ease, transform 150ms ease;
 }
 
 button:hover {
     background: #163e70;
+}
+
+button:active {
+    transform: translateY(1px);
 }
 
 #cancelButton {
@@ -178,12 +222,59 @@ table {
 
 th, td {
     padding: 12px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--line);
     text-align: left;
 }
 
 th {
-    background: #eaf0f8;
+    background: #edf3fa;
+    color: #46566a;
+    font-size: 13px;
+}
+
+tbody tr:hover {
+    background: #fafcff;
+}
+
+.action-cell {
+    white-space: nowrap;
+}
+
+.action-cell button {
+    margin: 2px 3px 2px 0;
+    padding: 7px 9px;
+    font-size: 12px;
+}
+
+.status-badge {
+    display: inline-block;
+    min-width: 68px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-active {
+    background: #dff4e8;
+    color: #20734b;
+}
+
+.status-inactive {
+    background: #eef0f3;
+    color: #687180;
+}
+
+.empty-row, .loading-row {
+    height: 120px;
+    text-align: center;
+    color: var(--muted);
+}
+
+#employeeSummary {
+    color: var(--muted);
+    margin: 14px 0 0;
 }
 
 .delete-btn {
@@ -209,5 +300,19 @@ th {
 @media (max-width: 650px) {
     form {
         grid-template-columns: 1fr;
+    }
+
+    .header-content {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    main {
+        width: 94%;
+        margin-top: 18px;
+    }
+
+    section {
+        padding: 18px;
     }
 }
