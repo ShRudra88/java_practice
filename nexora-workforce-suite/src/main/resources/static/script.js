@@ -12,7 +12,30 @@ let totalPages = 0;
 let activeNameFilter = "";
 let activeDepartmentFilter = "";
 
+function apiFetch(url, options = {}) {
+    const requestOptions = { ...options, credentials: "same-origin" };
+    const method = (requestOptions.method || "GET").toUpperCase();
+    if (["GET", "HEAD", "OPTIONS"].includes(method)) {
+        return fetch(url, requestOptions);
+    }
+
+    return fetch("/csrf", { credentials: "same-origin" })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error("Unable to validate this request. Refresh and try again.");
+            }
+            return response.json();
+        })
+        .then(function(csrf) {
+            const headers = new Headers(requestOptions.headers || {});
+            headers.set(csrf.headerName, csrf.token);
+            requestOptions.headers = headers;
+            return fetch(url, requestOptions);
+        });
+}
+
 document.addEventListener("DOMContentLoaded", function() {
+    initializeLogoutForm();
     if (employeeTable) {
         loadEmployees(0);
         if (new URLSearchParams(window.location.search).has("updated")) {
@@ -24,6 +47,29 @@ document.addEventListener("DOMContentLoaded", function() {
             initializeEmployeeForm();
         }
     });
+
+    function initializeLogoutForm() {
+        const logoutToken = document.getElementById("logoutCsrfToken");
+        if (!logoutToken) {
+            return;
+        }
+
+        apiFetch("/csrf")
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error("Unable to prepare sign out.");
+                }
+                return response.json();
+            })
+            .then(function(csrf) {
+                logoutToken.name = csrf.parameterName;
+                logoutToken.value = csrf.token;
+                logoutToken.form.querySelector("button").disabled = false;
+            })
+            .catch(function(error) {
+                showMessage(error.message);
+            });
+    }
 });
 
 if (employeeSearchForm) {
@@ -73,7 +119,7 @@ async function submitEmployeeForm(event) {
     };
 
     try {
-        const response = await fetch(
+        const response = await apiFetch(
             id ? `${API_URL}/${encodeURIComponent(id)}` : API_URL, {
             method: id ? "PUT" : "POST",
             headers: { "Content-Type": "application/json" },
@@ -110,7 +156,7 @@ async function initializeEmployeeForm() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/${encodeURIComponent(id)}`);
+        const response = await apiFetch(`${API_URL}/${encodeURIComponent(id)}`);
         if (!response.ok) {
             throw new Error("Unable to load employee");
         }
@@ -152,7 +198,7 @@ async function loadEmployees(page = currentPage) {
         if (activeDepartmentFilter) {
             parameters.set("departmentId", activeDepartmentFilter);
         }
-        const response = await fetch(`${API_URL}/search?${parameters}`);
+        const response = await apiFetch(`${API_URL}/search?${parameters}`);
 
         if (!response.ok) {
             throw new Error("Unable to load employees");
@@ -171,7 +217,7 @@ async function loadEmployees(page = currentPage) {
 
 async function loadDepartments() {
     try {
-        const response = await fetch(DEPARTMENTS_API_URL);
+        const response = await apiFetch(DEPARTMENTS_API_URL);
         if (!response.ok) {
             throw new Error("Unable to load departments");
         }
@@ -328,7 +374,7 @@ if (transferForm) {
         };
 
         try {
-            const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
+            const response = await apiFetch(`${API_URL}/${employeeId}/transfers`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(request)
@@ -352,7 +398,7 @@ if (transferForm) {
 
 async function loadDepartmentHistory(employee) {
     try {
-        const response = await fetch(
+        const response = await apiFetch(
             `${API_URL}/${employee.id}/department-history`
         );
         if (!response.ok) {
@@ -397,7 +443,7 @@ async function deleteEmployee(id) {
 
     try {
 
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await apiFetch(`${API_URL}/${id}`, {
             method: "DELETE"
         });
 

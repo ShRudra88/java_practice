@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#183b68">
+    <title>Admin Sign In | Nexora Workforce Suite</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="signin-page">
+<main class="signin-main">
+    <section class="signin-card" aria-labelledby="signinTitle">
+        <div class="signin-brand" aria-hidden="true">N</div>
+        <p class="eyebrow signin-eyebrow">NEXORA PEOPLE OPS</p>
+        <h1 id="signinTitle">Admin sign in</h1>
+        <p class="signin-description">
+            Sign in to securely manage workforce records and departments.
+        </p>
+
+        <p id="signinMessage" class="signin-message" role="alert" aria-live="polite"></p>
+
+        <form action="/login" method="post" id="signinForm" class="signin-form">
+            <input type="hidden" name="_csrf" id="csrfToken">
+            <div class="signin-field">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username"
+                       autocomplete="username" required autofocus>
+            </div>
+            <div class="signin-field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password"
+                       autocomplete="current-password" required>
+            </div>
+            <button type="submit" id="signinButton" disabled>Sign in</button>
+        </form>
+
+        <p class="signin-footer">Authorized administrators only</p>
+    </section>
+</main>
+<script src="signin.js"></script>
+</body>
+</html>

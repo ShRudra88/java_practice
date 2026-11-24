@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import com.nexora.workforce.controller.DepartmentController;
 import com.nexora.workforce.controller.EmployeeController;
@@ -13,6 +16,8 @@ import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.repository.DepartmentRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
@@ -23,12 +28,18 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "nexora.security.username=admin",
+        "nexora.security.password=change-me"
+})
 @AutoConfigureMockMvc
+@WithMockUser
 class NexoraWorkforceSuiteApplicationTests {
 
     @Autowired
@@ -45,6 +56,60 @@ class NexoraWorkforceSuiteApplicationTests {
 
     @Autowired
     private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    @WithAnonymousUser
+    void apiRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/employees"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Authentication required"));
+    }
+
+    @Test
+    void staticPagesRemainPublic() throws Exception {
+        mockMvc.perform(get("/signin.html"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithAnonymousUser
+    void workforcePagesRequireAdminSignIn() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/signin.html"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void adminCanSignInWithConfiguredCredentials() throws Exception {
+        mockMvc.perform(formLogin().user("admin").password("change-me"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
+    }
+
+    @Test
+    @Transactional
+    void csrfTokenCanAuthorizeApiWriteRequests() throws Exception {
+        var csrfResult = mockMvc.perform(get("/csrf"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode tokenResponse = objectMapper.readTree(
+                csrfResult.getResponse().getContentAsString());
+        String headerName = tokenResponse.get("headerName").asText();
+        String token = tokenResponse.get("token").asText();
+        String suffix = UUID.randomUUID().toString();
+
+        mockMvc.perform(post("/api/departments")
+                        .session((org.springframework.mock.web.MockHttpSession)
+                                csrfResult.getRequest().getSession(false))
+                        .header(headerName, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"CSRF-" + suffix + "\"}"))
+                .andExpect(status().isCreated());
+    }
 
 	@Test
     void contextLoads() {
@@ -108,6 +173,7 @@ class NexoraWorkforceSuiteApplicationTests {
                 newDepartment.getId(), LocalDate.now());
 
         mockMvc.perform(post("/api/employees/{id}/transfers", employee.getId())
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isOk())

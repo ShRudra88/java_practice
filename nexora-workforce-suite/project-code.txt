@@ -55,10 +55,21 @@ FILE: pom.xml
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -95,6 +106,131 @@ public class NexoraWorkforceSuiteApplication {
         );
     }
 }
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\config\SecurityConfig.java
+========================================
+
+package com.nexora.workforce.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService(
+            @Value("${nexora.security.username}") String username,
+            @Value("${nexora.security.password}") String password,
+            PasswordEncoder passwordEncoder) {
+        return new InMemoryUserDetailsManager(
+                User.withUsername(username)
+                        .password(passwordEncoder.encode(password))
+                        .roles("API_USER")
+                        .build());
+    }
+
+    @Bean
+    @Order(1)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectMapper objectMapper) throws Exception {
+        http
+                .securityMatcher("/api/**")
+                .csrf(Customizer.withDefaults())
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().authenticated())
+                .httpBasic(basic ->
+                        basic.authenticationEntryPoint(apiAuthenticationEntryPoint(objectMapper)))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(apiAuthenticationEntryPoint(objectMapper)));
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain webSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/signin.html", "/signin.js", "/style.css",
+                                "/favicon.ico", "/csrf")
+                        .permitAll()
+                        .requestMatchers("/", "/index.html", "/employee-registration.html",
+                                "/script.js")
+                        .authenticated()
+                        .anyRequest().authenticated())
+                .formLogin(form -> form
+                        .loginPage("/signin.html")
+                        .loginProcessingUrl("/login")
+                        .defaultSuccessUrl("/", true)
+                        .failureUrl("/signin.html?error"))
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/signin.html?logout")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID"));
+
+        return http.build();
+    }
+
+    private AuthenticationEntryPoint apiAuthenticationEntryPoint(ObjectMapper objectMapper) {
+        return (request, response, authException) -> {
+            response.setStatus(401);
+            response.setContentType("application/json");
+            response.setHeader("WWW-Authenticate", "Basic");
+            objectMapper.writeValue(response.getOutputStream(),
+                    Map.of("error", "Authentication required"));
+        };
+    }
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\controller\CsrfController.java
+========================================
+
+package com.nexora.workforce.controller;
+
+import java.util.Map;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class CsrfController {
+
+    @GetMapping("/csrf")
+    public Map<String, String> getCsrfToken(CsrfToken csrfToken) {
+        return Map.of("parameterName", csrfToken.getParameterName(),
+                "headerName", csrfToken.getHeaderName(),
+                "token", csrfToken.getToken());
+    }
+}
+
 
 
 ========================================
@@ -1420,6 +1556,10 @@ spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.open-in-view=false
 
+# API protection (HTTP Basic)
+nexora.security.username=${NEXORA_API_USERNAME:admin}
+nexora.security.password=${NEXORA_API_PASSWORD:change-me}
+
 
 
 ========================================
@@ -1476,12 +1616,20 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
 <body>
 
 <header>
-    <h1>Nexora Workforce Suite</h1>
-    <p>Workforce Management Dashboard</p>
-    <nav aria-label="Main navigation">
-        <a href="index.html">Employees</a>
-        <a href="employee-registration.html" aria-current="page">Register Employee</a>
-    </nav>
+    <div class="header-content">
+        <div>
+            <p class="eyebrow">NEXORA PEOPLE OPS</p>
+            <h1>Workforce Dashboard</h1>
+        </div>
+        <nav aria-label="Main navigation">
+            <a href="index.html">Employees</a>
+            <a href="employee-registration.html" aria-current="page">Register Employee</a>
+        </nav>
+        <form action="/logout" method="post" class="logout-form">
+            <input type="hidden" id="logoutCsrfToken" name="_csrf">
+            <button type="submit" class="logout-button" disabled>Sign out</button>
+        </form>
+    </div>
 </header>
 
 <main>
@@ -1572,19 +1720,27 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
 <body>
 
 <header>
-    <h1>Nexora Workforce Suite</h1>
-    <p>Workforce Management Dashboard</p>
-    <nav aria-label="Main navigation">
-        <a href="index.html" aria-current="page">Employees</a>
-        <a href="employee-registration.html">Register Employee</a>
-    </nav>
+    <div class="header-content">
+        <div>
+            <p class="eyebrow">NEXORA PEOPLE OPS</p>
+            <h1>Workforce Dashboard</h1>
+        </div>
+        <nav aria-label="Main navigation">
+            <a href="index.html" aria-current="page">Employees</a>
+            <a href="employee-registration.html">Register Employee</a>
+        </nav>
+        <form action="/logout" method="post" class="logout-form">
+            <input type="hidden" id="logoutCsrfToken" name="_csrf">
+            <button type="submit" class="logout-button" disabled>Sign out</button>
+        </form>
+    </div>
 </header>
 
 <main>
     <section class="dashboard">
         <div class="card">
-            <h3>Matching Employees</h3>
-            <h2 id="totalEmployees">0</h2>
+            <span class="card-label">Matching employees</span>
+            <strong id="totalEmployees">0</strong>
         </div>
     </section>
 
@@ -1706,7 +1862,30 @@ let totalPages = 0;
 let activeNameFilter = "";
 let activeDepartmentFilter = "";
 
+function apiFetch(url, options = {}) {
+    const requestOptions = { ...options, credentials: "same-origin" };
+    const method = (requestOptions.method || "GET").toUpperCase();
+    if (["GET", "HEAD", "OPTIONS"].includes(method)) {
+        return fetch(url, requestOptions);
+    }
+
+    return fetch("/csrf", { credentials: "same-origin" })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error("Unable to validate this request. Refresh and try again.");
+            }
+            return response.json();
+        })
+        .then(function(csrf) {
+            const headers = new Headers(requestOptions.headers || {});
+            headers.set(csrf.headerName, csrf.token);
+            requestOptions.headers = headers;
+            return fetch(url, requestOptions);
+        });
+}
+
 document.addEventListener("DOMContentLoaded", function() {
+    initializeLogoutForm();
     if (employeeTable) {
         loadEmployees(0);
         if (new URLSearchParams(window.location.search).has("updated")) {
@@ -1718,6 +1897,29 @@ document.addEventListener("DOMContentLoaded", function() {
             initializeEmployeeForm();
         }
     });
+
+    function initializeLogoutForm() {
+        const logoutToken = document.getElementById("logoutCsrfToken");
+        if (!logoutToken) {
+            return;
+        }
+
+        apiFetch("/csrf")
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error("Unable to prepare sign out.");
+                }
+                return response.json();
+            })
+            .then(function(csrf) {
+                logoutToken.name = csrf.parameterName;
+                logoutToken.value = csrf.token;
+                logoutToken.form.querySelector("button").disabled = false;
+            })
+            .catch(function(error) {
+                showMessage(error.message);
+            });
+    }
 });
 
 if (employeeSearchForm) {
@@ -1767,7 +1969,7 @@ async function submitEmployeeForm(event) {
     };
 
     try {
-        const response = await fetch(
+        const response = await apiFetch(
             id ? `${API_URL}/${encodeURIComponent(id)}` : API_URL, {
             method: id ? "PUT" : "POST",
             headers: { "Content-Type": "application/json" },
@@ -1804,7 +2006,7 @@ async function initializeEmployeeForm() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/${encodeURIComponent(id)}`);
+        const response = await apiFetch(`${API_URL}/${encodeURIComponent(id)}`);
         if (!response.ok) {
             throw new Error("Unable to load employee");
         }
@@ -1831,6 +2033,11 @@ async function initializeEmployeeForm() {
 
 async function loadEmployees(page = currentPage) {
     try {
+        const table = document.getElementById("employeeTable");
+        table.replaceChildren();
+        table.innerHTML =
+            '<tr><td class="loading-row" colspan="8">Loading employees...</td></tr>';
+        setPaginationLoading(true);
         const parameters = new URLSearchParams({
             page: String(page),
             size: String(pageSize)
@@ -1841,7 +2048,7 @@ async function loadEmployees(page = currentPage) {
         if (activeDepartmentFilter) {
             parameters.set("departmentId", activeDepartmentFilter);
         }
-        const response = await fetch(`${API_URL}/search?${parameters}`);
+        const response = await apiFetch(`${API_URL}/search?${parameters}`);
 
         if (!response.ok) {
             throw new Error("Unable to load employees");
@@ -1854,12 +2061,13 @@ async function loadEmployees(page = currentPage) {
         updatePagination();
     } catch (error) {
         showMessage(error.message);
+        setPaginationLoading(false);
     }
 }
 
 async function loadDepartments() {
     try {
-        const response = await fetch(DEPARTMENTS_API_URL);
+        const response = await apiFetch(DEPARTMENTS_API_URL);
         if (!response.ok) {
             throw new Error("Unable to load departments");
         }
@@ -1898,6 +2106,7 @@ async function loadDepartments() {
 function displayEmployees(employees, matchingEmployees) {
     const table = document.getElementById("employeeTable");
     table.replaceChildren();
+    setPaginationLoading(false);
 
     document.getElementById("totalEmployees").textContent = matchingEmployees;
     const firstResult = matchingEmployees === 0
@@ -1906,6 +2115,17 @@ function displayEmployees(employees, matchingEmployees) {
     const lastResult = Math.min((currentPage + 1) * pageSize, matchingEmployees);
     document.getElementById("employeeSummary").textContent =
         `Showing ${firstResult}-${lastResult} of ${matchingEmployees} employees`;
+
+    if (employees.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 8;
+        cell.className = "empty-row";
+        cell.textContent = "No employees match the current filters.";
+        row.appendChild(cell);
+        table.appendChild(row);
+        return;
+    }
 
     employees.forEach(employee => {
         const row = document.createElement("tr");
@@ -1916,8 +2136,7 @@ function displayEmployees(employees, matchingEmployees) {
             employee.email,
             employee.departmentName || "",
             employee.jobTitle || "",
-            employee.salary ?? "",
-            employee.status || ""
+            formatSalary(employee.salary)
         ];
 
         values.forEach(value => {
@@ -1926,26 +2145,41 @@ function displayEmployees(employees, matchingEmployees) {
             row.appendChild(cell);
         });
 
+        const statusCell = document.createElement("td");
+        const status = employee.status || "INACTIVE";
+        const statusBadge = document.createElement("span");
+        statusBadge.className =
+            `status-badge ${status === "ACTIVE" ? "status-active" : "status-inactive"}`;
+        statusBadge.textContent =
+            status.charAt(0) + status.slice(1).toLowerCase();
+        statusCell.appendChild(statusBadge);
+        row.appendChild(statusCell);
+
         const actionCell = document.createElement("td");
+        actionCell.className = "action-cell";
 
         const editButton = document.createElement("button");
         editButton.textContent = "Edit";
         editButton.className = "edit-btn";
+        editButton.type = "button";
         editButton.onclick = () => editEmployee(employee);
 
         const deleteButton = document.createElement("button");
         deleteButton.textContent = "Delete";
         deleteButton.className = "delete-btn";
+        deleteButton.type = "button";
         deleteButton.onclick = () => deleteEmployee(employee.id);
 
         const transferButton = document.createElement("button");
         transferButton.textContent = "Transfer";
         transferButton.className = "transfer-btn";
+        transferButton.type = "button";
         transferButton.onclick = () => openTransferForm(employee);
 
         const historyButton = document.createElement("button");
         historyButton.textContent = "History";
         historyButton.className = "history-btn";
+        historyButton.type = "button";
         historyButton.onclick = () => loadDepartmentHistory(employee);
 
         actionCell.append(editButton, transferButton, historyButton, deleteButton);
@@ -1990,7 +2224,7 @@ if (transferForm) {
         };
 
         try {
-            const response = await fetch(`${API_URL}/${employeeId}/transfers`, {
+            const response = await apiFetch(`${API_URL}/${employeeId}/transfers`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(request)
@@ -2014,7 +2248,7 @@ if (transferForm) {
 
 async function loadDepartmentHistory(employee) {
     try {
-        const response = await fetch(
+        const response = await apiFetch(
             `${API_URL}/${employee.id}/department-history`
         );
         if (!response.ok) {
@@ -2059,7 +2293,7 @@ async function deleteEmployee(id) {
 
     try {
 
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await apiFetch(`${API_URL}/${id}`, {
             method: "DELETE"
         });
 
@@ -2068,8 +2302,10 @@ async function deleteEmployee(id) {
         }
 
         showMessage("Employee deleted successfully!");
-
-        loadEmployees(0);
+        const employeeRows = document.querySelectorAll("#employeeTable tr");
+        const deletingOnlyPageRow =
+            currentPage > 0 && employeeRows.length === 1;
+        loadEmployees(deletingOnlyPageRow ? currentPage - 1 : currentPage);
 
     } catch (error) {
         showMessage(error.message);
@@ -2102,6 +2338,22 @@ function updatePagination() {
         currentPage + 1 >= totalPages;
 }
 
+function setPaginationLoading(isLoading) {
+    document.getElementById("previousPageButton").disabled = isLoading;
+    document.getElementById("nextPageButton").disabled = isLoading;
+}
+
+function formatSalary(salary) {
+    if (salary === null || salary === undefined || salary === "") {
+        return "Not set";
+    }
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2
+    }).format(Number(salary));
+}
+
 
 function resetForm() {
     form.reset();
@@ -2125,6 +2377,92 @@ function showMessage(message) {
 
 
 ========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\signin.html
+========================================
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#183b68">
+    <title>Admin Sign In | Nexora Workforce Suite</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="signin-page">
+<main class="signin-main">
+    <section class="signin-card" aria-labelledby="signinTitle">
+        <div class="signin-brand" aria-hidden="true">N</div>
+        <p class="eyebrow signin-eyebrow">NEXORA PEOPLE OPS</p>
+        <h1 id="signinTitle">Admin sign in</h1>
+        <p class="signin-description">
+            Sign in to securely manage workforce records and departments.
+        </p>
+
+        <p id="signinMessage" class="signin-message" role="alert" aria-live="polite"></p>
+
+        <form action="/login" method="post" id="signinForm" class="signin-form">
+            <input type="hidden" name="_csrf" id="csrfToken">
+            <div class="signin-field">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username"
+                       autocomplete="username" required autofocus>
+            </div>
+            <div class="signin-field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password"
+                       autocomplete="current-password" required>
+            </div>
+            <button type="submit" id="signinButton" disabled>Sign in</button>
+        </form>
+
+        <p class="signin-footer">Authorized administrators only</p>
+    </section>
+</main>
+<script src="signin.js"></script>
+</body>
+</html>
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\signin.js
+========================================
+
+const signinForm = document.getElementById("signinForm");
+const signinButton = document.getElementById("signinButton");
+const signinMessage = document.getElementById("signinMessage");
+
+fetch("/csrf", { credentials: "same-origin" })
+    .then(function(response) {
+        if (!response.ok) {
+            throw new Error("Unable to initialize secure sign in. Refresh to try again.");
+        }
+        return response.json();
+    })
+    .then(function(csrf) {
+        document.getElementById("csrfToken").name = csrf.parameterName;
+        document.getElementById("csrfToken").value = csrf.token;
+        signinButton.disabled = false;
+    })
+    .catch(function(error) {
+        signinMessage.textContent = error.message;
+    });
+
+if (new URLSearchParams(window.location.search).has("error")) {
+    signinMessage.textContent = "The username or password is incorrect.";
+} else if (new URLSearchParams(window.location.search).has("logout")) {
+    signinMessage.textContent = "You have been signed out.";
+}
+
+signinForm.addEventListener("submit", function() {
+    signinButton.disabled = true;
+    signinButton.textContent = "Signing in...";
+});
+
+
+
+========================================
 FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\static\style.css
 ========================================
 
@@ -2133,33 +2471,55 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
     box-sizing: border-box;
 }
 
+:root {
+    --navy: #17365d;
+    --blue: #245a9b;
+    --blue-soft: #edf4fc;
+    --ink: #263247;
+    --muted: #667085;
+    --line: #dde5ef;
+}
+
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f3f6fb;
-    color: #263247;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background: #f4f7fb;
+    color: var(--ink);
 }
 
 header {
-    background: #183b68;
+    background: linear-gradient(135deg, #183b68, #245a9b);
     color: white;
     padding: 24px 5%;
+    box-shadow: 0 2px 12px rgba(20, 49, 87, 0.16);
 }
 
-header h1 {
+.header-content {
+    max-width: 1250px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.header-content h1 {
+    margin: 2px 0 0;
+    font-size: 28px;
+}
+
+.eyebrow {
     margin: 0;
-}
-
-header p {
-    margin-bottom: 0;
-    color: #d8e5f5;
+    color: #cfe0f5;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
 }
 
 nav {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-top: 20px;
 }
 
 nav a {
@@ -2170,7 +2530,22 @@ nav a {
 }
 
 nav a:hover, nav a[aria-current="page"] {
-    background: #245a9b;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.logout-form {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.logout-button {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.42);
+}
+
+.logout-button:hover {
+    background: rgba(255, 255, 255, 0.24);
 }
 
 main {
@@ -2181,21 +2556,31 @@ main {
 
 section {
     background: white;
-    padding: 22px;
+    padding: 24px;
     margin-bottom: 24px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px #0000000d;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(34, 70, 113, 0.06);
 }
 
 .card {
-    background: #e5efff;
-    padding: 15px;
+    background: var(--blue-soft);
+    border-left: 4px solid var(--blue);
+    padding: 16px 20px;
     border-radius: 8px;
-    width: 240px;
+    min-width: 220px;
 }
 
-.card h2 {
-    color: #183b68;
+.card-label {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.card strong {
+    display: block;
+    color: var(--navy);
     font-size: 32px;
 }
 
@@ -2268,10 +2653,17 @@ form {
 }
 
 input, select {
-    padding: 12px;
-    border: 1px solid #ccd4df;
-    border-radius: 5px;
+    padding: 11px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
     width: 100%;
+    background: white;
+    color: var(--ink);
+}
+
+input:focus, select:focus, button:focus, a:focus {
+    outline: 3px solid rgba(36, 90, 155, 0.18);
+    outline-offset: 2px;
 }
 
 label {
@@ -2281,14 +2673,19 @@ label {
 button {
     background: #245a9b;
     color: white;
-    padding: 11px 16px;
+    padding: 10px 14px;
     border: none;
-    border-radius: 5px;
+    border-radius: 7px;
     cursor: pointer;
+    transition: background 150ms ease, transform 150ms ease;
 }
 
 button:hover {
     background: #163e70;
+}
+
+button:active {
+    transform: translateY(1px);
 }
 
 #cancelButton {
@@ -2308,12 +2705,59 @@ table {
 
 th, td {
     padding: 12px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--line);
     text-align: left;
 }
 
 th {
-    background: #eaf0f8;
+    background: #edf3fa;
+    color: #46566a;
+    font-size: 13px;
+}
+
+tbody tr:hover {
+    background: #fafcff;
+}
+
+.action-cell {
+    white-space: nowrap;
+}
+
+.action-cell button {
+    margin: 2px 3px 2px 0;
+    padding: 7px 9px;
+    font-size: 12px;
+}
+
+.status-badge {
+    display: inline-block;
+    min-width: 68px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-active {
+    background: #dff4e8;
+    color: #20734b;
+}
+
+.status-inactive {
+    background: #eef0f3;
+    color: #687180;
+}
+
+.empty-row, .loading-row {
+    height: 120px;
+    text-align: center;
+    color: var(--muted);
+}
+
+#employeeSummary {
+    color: var(--muted);
+    margin: 14px 0 0;
 }
 
 .delete-btn {
@@ -2336,9 +2780,116 @@ th {
     font-weight: bold;
 }
 
+.signin-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 15% 15%, rgba(80, 133, 195, 0.18), transparent 34%),
+        linear-gradient(145deg, #f3f7fc 0%, #e8eff8 100%);
+}
+
+.signin-main {
+    width: 100%;
+    min-height: 100vh;
+    max-width: none;
+    margin: 0;
+    padding: 32px 18px;
+    display: grid;
+    place-items: center;
+}
+
+.signin-card {
+    width: min(100%, 440px);
+    margin: 0;
+    padding: 38px;
+    border-radius: 16px;
+    box-shadow: 0 18px 55px rgba(27, 55, 91, 0.14);
+}
+
+.signin-brand {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 24px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #183b68, #3475bb);
+    color: white;
+    font-size: 23px;
+    font-weight: 800;
+}
+
+.signin-eyebrow {
+    color: var(--blue);
+}
+
+.signin-card h1 {
+    margin: 8px 0;
+    color: var(--navy);
+    font-size: 29px;
+}
+
+.signin-description, .signin-footer {
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.signin-form {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.signin-field label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 600;
+}
+
+.signin-form button {
+    width: 100%;
+    padding: 13px;
+    font-weight: 700;
+}
+
+.signin-form button:disabled {
+    background: #98a9bd;
+    cursor: wait;
+}
+
+.signin-message {
+    min-height: 22px;
+    margin: 16px 0 0;
+    color: #a6332a;
+    font-size: 14px;
+}
+
+.signin-footer {
+    margin: 24px 0 0;
+    text-align: center;
+    font-size: 13px;
+}
+
 @media (max-width: 650px) {
     form {
         grid-template-columns: 1fr;
+    }
+
+    .header-content {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .signin-card {
+        padding: 28px 22px;
+    }
+
+    main {
+        width: 94%;
+        margin-top: 18px;
+    }
+
+    section {
+        padding: 18px;
     }
 }
 
@@ -2355,7 +2906,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import com.nexora.workforce.controller.DepartmentController;
 import com.nexora.workforce.controller.EmployeeController;
@@ -2363,6 +2917,8 @@ import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.repository.DepartmentRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
@@ -2373,12 +2929,18 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "nexora.security.username=admin",
+        "nexora.security.password=change-me"
+})
 @AutoConfigureMockMvc
+@WithMockUser
 class NexoraWorkforceSuiteApplicationTests {
 
     @Autowired
@@ -2395,6 +2957,60 @@ class NexoraWorkforceSuiteApplicationTests {
 
     @Autowired
     private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    @WithAnonymousUser
+    void apiRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/employees"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Authentication required"));
+    }
+
+    @Test
+    void staticPagesRemainPublic() throws Exception {
+        mockMvc.perform(get("/signin.html"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithAnonymousUser
+    void workforcePagesRequireAdminSignIn() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/signin.html"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void adminCanSignInWithConfiguredCredentials() throws Exception {
+        mockMvc.perform(formLogin().user("admin").password("change-me"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
+    }
+
+    @Test
+    @Transactional
+    void csrfTokenCanAuthorizeApiWriteRequests() throws Exception {
+        var csrfResult = mockMvc.perform(get("/csrf"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode tokenResponse = objectMapper.readTree(
+                csrfResult.getResponse().getContentAsString());
+        String headerName = tokenResponse.get("headerName").asText();
+        String token = tokenResponse.get("token").asText();
+        String suffix = UUID.randomUUID().toString();
+
+        mockMvc.perform(post("/api/departments")
+                        .session((org.springframework.mock.web.MockHttpSession)
+                                csrfResult.getRequest().getSession(false))
+                        .header(headerName, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"CSRF-" + suffix + "\"}"))
+                .andExpect(status().isCreated());
+    }
 
 	@Test
     void contextLoads() {
@@ -2458,6 +3074,7 @@ class NexoraWorkforceSuiteApplicationTests {
                 newDepartment.getId(), LocalDate.now());
 
         mockMvc.perform(post("/api/employees/{id}/transfers", employee.getId())
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isOk())
