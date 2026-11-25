@@ -1,6 +1,7 @@
 package com.nexora.workforce.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexora.workforce.repository.EmployeeRepository;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -11,9 +12,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -30,12 +31,26 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService(
             @Value("${nexora.security.username}") String username,
             @Value("${nexora.security.password}") String password,
+            EmployeeRepository employeeRepository,
             PasswordEncoder passwordEncoder) {
-        return new InMemoryUserDetailsManager(
-                User.withUsername(username)
-                        .password(passwordEncoder.encode(password))
-                        .roles("API_USER")
-                        .build());
+        String encodedAdminPassword = passwordEncoder.encode(password);
+        return requestedUsername -> {
+            if (username.equals(requestedUsername)) {
+                return User.withUsername(username)
+                        .password(encodedAdminPassword)
+                        .roles("ADMIN")
+                        .build();
+            }
+
+            return employeeRepository
+                    .findByEmailIgnoreCaseAndPasswordHashIsNotNull(requestedUsername)
+                    .map(employee -> User.withUsername(employee.getEmail())
+                            .password(employee.getPasswordHash())
+                            .roles("EMPLOYEE")
+                            .build())
+                    .orElseThrow(() -> new UsernameNotFoundException(
+                            "No account found for username: " + requestedUsername));
+        };
     }
 
     @Bean
@@ -47,7 +62,11 @@ public class SecurityConfig {
                 .securityMatcher("/api/**")
                 .csrf(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().authenticated())
+                        .requestMatchers("/api/auth/me",
+                                "/api/employees/count",
+                                "/api/employees/me")
+                        .hasAnyRole("ADMIN", "EMPLOYEE")
+                        .anyRequest().hasRole("ADMIN"))
                 .httpBasic(basic ->
                         basic.authenticationEntryPoint(apiAuthenticationEntryPoint(objectMapper)))
                 .exceptionHandling(exceptions -> exceptions
@@ -64,8 +83,9 @@ public class SecurityConfig {
                         .requestMatchers("/signin.html", "/signin.js", "/style.css",
                                 "/favicon.ico", "/csrf")
                         .permitAll()
-                        .requestMatchers("/", "/index.html", "/employee-registration.html",
-                                "/script.js")
+                        .requestMatchers("/employee-registration.html")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/", "/index.html", "/script.js")
                         .authenticated()
                         .anyRequest().authenticated())
                 .formLogin(form -> form

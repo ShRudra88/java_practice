@@ -19,6 +19,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,14 +29,17 @@ public class EmployeeService {
     private final EmployeeRepository repository;
     private final DepartmentRepository departmentRepository;
     private final EmployeeDepartmentHistoryRepository historyRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public EmployeeService(
             EmployeeRepository repository,
             DepartmentRepository departmentRepository,
-            EmployeeDepartmentHistoryRepository historyRepository) {
+            EmployeeDepartmentHistoryRepository historyRepository,
+            PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.departmentRepository = departmentRepository;
         this.historyRepository = historyRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -51,6 +55,7 @@ public class EmployeeService {
         ensureEmailIsAvailable(request.getEmail(), null);
 
         Employee employee = toEmployee(request);
+        setPasswordIfProvided(employee, request.getPassword());
         employee.setDepartment(resolveDepartment(employee.getDepartment()));
         Employee savedEmployee = repository.save(employee);
         if (savedEmployee.getDepartment() != null) {
@@ -69,6 +74,19 @@ public class EmployeeService {
         return repository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public long getEmployeeCount() {
+        return repository.count();
+    }
+
+    @Transactional(readOnly = true)
+    public EmployeeResponseDTO getEmployeeByEmail(String email) {
+        Employee employee = repository
+                .findByEmailIgnoreCaseAndPasswordHashIsNotNull(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee account not found: " + email));
+        return toResponse(employee);
     }
 
     public EmployeeResponseDTO getEmployeeById(Long id) {
@@ -98,6 +116,7 @@ public class EmployeeService {
         ensureEmailIsAvailable(request.getEmail(), id);
 
         Employee updatedEmployee = toEmployee(request);
+        setPasswordIfProvided(currentEmployee, request.getPassword());
         Department updatedDepartment = resolveDepartment(updatedEmployee.getDepartment());
         if (!sameDepartment(currentEmployee.getDepartment(), updatedDepartment)) {
             recordDepartmentChange(
@@ -214,6 +233,12 @@ public class EmployeeService {
         employee.setHireDate(request.getHireDate());
         employee.setStatus(request.getStatus());
         return employee;
+    }
+
+    private void setPasswordIfProvided(Employee employee, String password) {
+        if (password != null && !password.isBlank()) {
+            employee.setPasswordHash(passwordEncoder.encode(password));
+        }
     }
 
     private EmployeeResponseDTO toResponse(Employee employee) {

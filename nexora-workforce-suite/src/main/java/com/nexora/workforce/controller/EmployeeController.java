@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +42,16 @@ public class EmployeeController {
     @GetMapping
     public List<EmployeeResponseDTO> getAllEmployees() {
         return service.getAllEmployees();
+    }
+
+    @GetMapping("/count")
+    public long getEmployeeCount() {
+        return service.getEmployeeCount();
+    }
+
+    @GetMapping("/me")
+    public EmployeeResponseDTO getCurrentEmployee(Authentication authentication) {
+        return service.getEmployeeByEmail(authentication.getName());
     }
 
     @GetMapping("/{id}")

@@ -401,6 +401,29 @@ tbody tr:hover {
     font-size: 13px;
 }
 
+.employee-profile {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 0;
+}
+
+.employee-profile div {
+    padding: 14px;
+    border-radius: 8px;
+    background: #f7f9fc;
+}
+
+.employee-profile dt {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.employee-profile dd {
+    margin: 6px 0 0;
+    font-weight: 600;
+}
+
 @media (max-width: 650px) {
     form {
         grid-template-columns: 1fr;

@@ -14,9 +14,9 @@
             <p class="eyebrow">NEXORA PEOPLE OPS</p>
             <h1>Workforce Dashboard</h1>
         </div>
-        <nav aria-label="Main navigation">
+        <nav id="adminNavigation" aria-label="Main navigation">
             <a href="index.html" aria-current="page">Employees</a>
-            <a href="employee-registration.html">Register Employee</a>
+            <a href="employee-registration.html" hidden>Register Employee</a>
         </nav>
         <form action="/logout" method="post" class="logout-form">
             <input type="hidden" id="logoutCsrfToken" name="_csrf">
@@ -28,11 +28,27 @@
 <main>
     <section class="dashboard">
         <div class="card">
-            <span class="card-label">Matching employees</span>
+            <span class="card-label" id="employeeCountLabel">Matching employees</span>
             <strong id="totalEmployees">0</strong>
         </div>
     </section>
 
+    <section id="employeeProfile" class="table-section" hidden>
+        <h2>My Employee Profile</h2>
+        <dl class="employee-profile">
+            <div><dt>Employee ID</dt><dd id="profileId"></dd></div>
+            <div><dt>Name</dt><dd id="profileName"></dd></div>
+            <div><dt>Email</dt><dd id="profileEmail"></dd></div>
+            <div><dt>Phone</dt><dd id="profilePhone"></dd></div>
+            <div><dt>Department</dt><dd id="profileDepartment"></dd></div>
+            <div><dt>Job title</dt><dd id="profileJobTitle"></dd></div>
+            <div><dt>Salary</dt><dd id="profileSalary"></dd></div>
+            <div><dt>Hire date</dt><dd id="profileHireDate"></dd></div>
+            <div><dt>Status</dt><dd id="profileStatus"></dd></div>
+        </dl>
+    </section>
+
+    <div id="adminDashboard" hidden>
     <section class="table-section">
         <h2>Employee Records</h2>
 
@@ -125,6 +141,7 @@
             </table>
         </div>
     </section>
+    </div>
 </main>
 
 <script src="script.js"></script>

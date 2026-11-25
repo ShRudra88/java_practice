@@ -1,6 +1,7 @@
 
 package com.nexora.workforce.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.persistence.Column;
@@ -43,6 +44,10 @@ public class Employee {
     @NotBlank
     @Column(nullable = false, unique = true)
     private String email;
+
+    @JsonIgnore
+    @Column(name = "PASSWORD_HASH")
+    private String passwordHash;
 
     private String phone;
 
@@ -94,6 +99,14 @@ public class Employee {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public String getPhone() {

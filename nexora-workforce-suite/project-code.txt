@@ -115,6 +115,7 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nex
 package com.nexora.workforce.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexora.workforce.repository.EmployeeRepository;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -125,9 +126,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -144,12 +145,26 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService(
             @Value("${nexora.security.username}") String username,
             @Value("${nexora.security.password}") String password,
+            EmployeeRepository employeeRepository,
             PasswordEncoder passwordEncoder) {
-        return new InMemoryUserDetailsManager(
-                User.withUsername(username)
-                        .password(passwordEncoder.encode(password))
-                        .roles("API_USER")
-                        .build());
+        String encodedAdminPassword = passwordEncoder.encode(password);
+        return requestedUsername -> {
+            if (username.equals(requestedUsername)) {
+                return User.withUsername(username)
+                        .password(encodedAdminPassword)
+                        .roles("ADMIN")
+                        .build();
+            }
+
+            return employeeRepository
+                    .findByEmailIgnoreCaseAndPasswordHashIsNotNull(requestedUsername)
+                    .map(employee -> User.withUsername(employee.getEmail())
+                            .password(employee.getPasswordHash())
+                            .roles("EMPLOYEE")
+                            .build())
+                    .orElseThrow(() -> new UsernameNotFoundException(
+                            "No account found for username: " + requestedUsername));
+        };
     }
 
     @Bean
@@ -161,7 +176,11 @@ public class SecurityConfig {
                 .securityMatcher("/api/**")
                 .csrf(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().authenticated())
+                        .requestMatchers("/api/auth/me",
+                                "/api/employees/count",
+                                "/api/employees/me")
+                        .hasAnyRole("ADMIN", "EMPLOYEE")
+                        .anyRequest().hasRole("ADMIN"))
                 .httpBasic(basic ->
                         basic.authenticationEntryPoint(apiAuthenticationEntryPoint(objectMapper)))
                 .exceptionHandling(exceptions -> exceptions
@@ -178,8 +197,9 @@ public class SecurityConfig {
                         .requestMatchers("/signin.html", "/signin.js", "/style.css",
                                 "/favicon.ico", "/csrf")
                         .permitAll()
-                        .requestMatchers("/", "/index.html", "/employee-registration.html",
-                                "/script.js")
+                        .requestMatchers("/employee-registration.html")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/", "/index.html", "/script.js")
                         .authenticated()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
@@ -204,6 +224,35 @@ public class SecurityConfig {
             objectMapper.writeValue(response.getOutputStream(),
                     Map.of("error", "Authentication required"));
         };
+    }
+}
+
+
+
+========================================
+FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nexora\workforce\controller\AuthController.java
+========================================
+
+package com.nexora.workforce.controller;
+
+import java.util.Map;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class AuthController {
+
+    @GetMapping("/api/auth/me")
+    public Map<String, String> getCurrentUser(Authentication authentication) {
+        String role = authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Authenticated user has no assigned role"));
+        return Map.of("username", authentication.getName(), "role", role);
     }
 }
 
@@ -308,6 +357,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -338,6 +388,16 @@ public class EmployeeController {
     @GetMapping
     public List<EmployeeResponseDTO> getAllEmployees() {
         return service.getAllEmployees();
+    }
+
+    @GetMapping("/count")
+    public long getEmployeeCount() {
+        return service.getEmployeeCount();
+    }
+
+    @GetMapping("/me")
+    public EmployeeResponseDTO getCurrentEmployee(Authentication authentication) {
+        return service.getEmployeeByEmail(authentication.getName());
     }
 
     @GetMapping("/{id}")
@@ -436,6 +496,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public class EmployeeRequestDTO {
@@ -452,6 +513,9 @@ public class EmployeeRequestDTO {
     @Email
     @NotBlank
     private String email;
+
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    private String password;
 
     private String phone;
 
@@ -495,6 +559,14 @@ public class EmployeeRequestDTO {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getPhone() {
@@ -721,6 +793,7 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\java\com\nex
 
 package com.nexora.workforce.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.persistence.Column;
@@ -763,6 +836,10 @@ public class Employee {
     @NotBlank
     @Column(nullable = false, unique = true)
     private String email;
+
+    @JsonIgnore
+    @Column(name = "PASSWORD_HASH")
+    private String passwordHash;
 
     private String phone;
 
@@ -814,6 +891,14 @@ public class Employee {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public String getPhone() {
@@ -1151,6 +1236,8 @@ public interface EmployeeRepository
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+
+    Optional<Employee> findByEmailIgnoreCaseAndPasswordHashIsNotNull(String email);
 }
 
 
@@ -1232,6 +1319,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -1241,14 +1329,17 @@ public class EmployeeService {
     private final EmployeeRepository repository;
     private final DepartmentRepository departmentRepository;
     private final EmployeeDepartmentHistoryRepository historyRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public EmployeeService(
             EmployeeRepository repository,
             DepartmentRepository departmentRepository,
-            EmployeeDepartmentHistoryRepository historyRepository) {
+            EmployeeDepartmentHistoryRepository historyRepository,
+            PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.departmentRepository = departmentRepository;
         this.historyRepository = historyRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -1264,6 +1355,7 @@ public class EmployeeService {
         ensureEmailIsAvailable(request.getEmail(), null);
 
         Employee employee = toEmployee(request);
+        setPasswordIfProvided(employee, request.getPassword());
         employee.setDepartment(resolveDepartment(employee.getDepartment()));
         Employee savedEmployee = repository.save(employee);
         if (savedEmployee.getDepartment() != null) {
@@ -1282,6 +1374,19 @@ public class EmployeeService {
         return repository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public long getEmployeeCount() {
+        return repository.count();
+    }
+
+    @Transactional(readOnly = true)
+    public EmployeeResponseDTO getEmployeeByEmail(String email) {
+        Employee employee = repository
+                .findByEmailIgnoreCaseAndPasswordHashIsNotNull(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee account not found: " + email));
+        return toResponse(employee);
     }
 
     public EmployeeResponseDTO getEmployeeById(Long id) {
@@ -1311,6 +1416,7 @@ public class EmployeeService {
         ensureEmailIsAvailable(request.getEmail(), id);
 
         Employee updatedEmployee = toEmployee(request);
+        setPasswordIfProvided(currentEmployee, request.getPassword());
         Department updatedDepartment = resolveDepartment(updatedEmployee.getDepartment());
         if (!sameDepartment(currentEmployee.getDepartment(), updatedDepartment)) {
             recordDepartmentChange(
@@ -1427,6 +1533,12 @@ public class EmployeeService {
         employee.setHireDate(request.getHireDate());
         employee.setStatus(request.getStatus());
         return employee;
+    }
+
+    private void setPasswordIfProvided(Employee employee, String password) {
+        if (password != null && !password.isBlank()) {
+            employee.setPasswordHash(passwordEncoder.encode(password));
+        }
     }
 
     private EmployeeResponseDTO toResponse(Employee employee) {
@@ -1656,6 +1768,13 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
             </div>
 
             <div class="form-field">
+                <label for="employeePassword">Employee sign-in password</label>
+                <input type="password" id="employeePassword"
+                       autocomplete="new-password" minlength="8">
+                <small id="passwordHelp">Required to create the employee's sign-in account (at least 8 characters).</small>
+            </div>
+
+            <div class="form-field">
                 <label for="phone">Phone number</label>
                 <input type="tel" id="phone" autocomplete="tel">
             </div>
@@ -1725,9 +1844,9 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
             <p class="eyebrow">NEXORA PEOPLE OPS</p>
             <h1>Workforce Dashboard</h1>
         </div>
-        <nav aria-label="Main navigation">
+        <nav id="adminNavigation" aria-label="Main navigation">
             <a href="index.html" aria-current="page">Employees</a>
-            <a href="employee-registration.html">Register Employee</a>
+            <a href="employee-registration.html" hidden>Register Employee</a>
         </nav>
         <form action="/logout" method="post" class="logout-form">
             <input type="hidden" id="logoutCsrfToken" name="_csrf">
@@ -1739,11 +1858,27 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
 <main>
     <section class="dashboard">
         <div class="card">
-            <span class="card-label">Matching employees</span>
+            <span class="card-label" id="employeeCountLabel">Matching employees</span>
             <strong id="totalEmployees">0</strong>
         </div>
     </section>
 
+    <section id="employeeProfile" class="table-section" hidden>
+        <h2>My Employee Profile</h2>
+        <dl class="employee-profile">
+            <div><dt>Employee ID</dt><dd id="profileId"></dd></div>
+            <div><dt>Name</dt><dd id="profileName"></dd></div>
+            <div><dt>Email</dt><dd id="profileEmail"></dd></div>
+            <div><dt>Phone</dt><dd id="profilePhone"></dd></div>
+            <div><dt>Department</dt><dd id="profileDepartment"></dd></div>
+            <div><dt>Job title</dt><dd id="profileJobTitle"></dd></div>
+            <div><dt>Salary</dt><dd id="profileSalary"></dd></div>
+            <div><dt>Hire date</dt><dd id="profileHireDate"></dd></div>
+            <div><dt>Status</dt><dd id="profileStatus"></dd></div>
+        </dl>
+    </section>
+
+    <div id="adminDashboard" hidden>
     <section class="table-section">
         <h2>Employee Records</h2>
 
@@ -1836,6 +1971,7 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
             </table>
         </div>
     </section>
+    </div>
 </main>
 
 <script src="script.js"></script>
@@ -1887,16 +2023,16 @@ function apiFetch(url, options = {}) {
 document.addEventListener("DOMContentLoaded", function() {
     initializeLogoutForm();
     if (employeeTable) {
-        loadEmployees(0);
-        if (new URLSearchParams(window.location.search).has("updated")) {
-            showMessage("Employee updated successfully!");
-        }
+        initializeDashboard();
     }
-    loadDepartments().then(function() {
-        if (form) {
+    if (form) {
+        loadDepartments().then(function() {
             initializeEmployeeForm();
-        }
-    });
+        });
+        const passwordInput = document.getElementById("employeePassword");
+        passwordInput.required =
+            !new URLSearchParams(window.location.search).has("id");
+    }
 
     function initializeLogoutForm() {
         const logoutToken = document.getElementById("logoutCsrfToken");
@@ -1921,6 +2057,70 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 });
+
+async function initializeDashboard() {
+    try {
+        const response = await apiFetch("/api/auth/me");
+        if (!response.ok) {
+            throw new Error("Unable to load your account details.");
+        }
+        const account = await response.json();
+        if (account.role === "ADMIN") {
+            document.getElementById("adminDashboard").hidden = false;
+            document.getElementById("adminNavigation")
+                .querySelector("a[href='employee-registration.html']").hidden = false;
+            loadEmployees(0);
+            loadDepartments();
+            if (new URLSearchParams(window.location.search).has("updated")) {
+                showMessage("Employee updated successfully!");
+            }
+            return;
+        }
+        if (account.role !== "EMPLOYEE") {
+            throw new Error("Your account does not have a supported role.");
+        }
+
+        document.getElementById("adminNavigation")
+            .querySelector("a[href='employee-registration.html']").hidden = true;
+        document.getElementById("adminDashboard").hidden = true;
+        document.getElementById("employeeProfile").hidden = false;
+        document.getElementById("employeeCountLabel").textContent =
+            "Total employees";
+
+        const [countResponse, profileResponse] = await Promise.all([
+            apiFetch(`${API_URL}/count`),
+            apiFetch(`${API_URL}/me`)
+        ]);
+        if (!countResponse.ok || !profileResponse.ok) {
+            throw new Error("Unable to load your employee information.");
+        }
+        const [count, employee] = await Promise.all([
+            countResponse.json(),
+            profileResponse.json()
+        ]);
+        document.getElementById("totalEmployees").textContent = count;
+        displayEmployeeProfile(employee);
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+function displayEmployeeProfile(employee) {
+    const values = {
+        profileId: employee.id,
+        profileName: `${employee.firstName} ${employee.lastName}`,
+        profileEmail: employee.email,
+        profilePhone: employee.phone || "Not set",
+        profileDepartment: employee.departmentName || "Not assigned",
+        profileJobTitle: employee.jobTitle || "Not set",
+        profileSalary: formatSalary(employee.salary),
+        profileHireDate: employee.hireDate || "Not set",
+        profileStatus: employee.status || "Not set"
+    };
+    Object.keys(values).forEach(function(id) {
+        document.getElementById(id).textContent = values[id];
+    });
+}
 
 if (employeeSearchForm) {
     employeeSearchForm.addEventListener("submit", searchEmployees);
@@ -1967,6 +2167,10 @@ async function submitEmployeeForm(event) {
         hireDate: document.getElementById("hireDate").value || null,
         status: document.getElementById("status").value
     };
+    const password = document.getElementById("employeePassword").value;
+    if (password) {
+        employee.password = password;
+    }
 
     try {
         const response = await apiFetch(
@@ -2004,6 +2208,11 @@ async function initializeEmployeeForm() {
     if (!id) {
         return;
     }
+    document.getElementById("employeePassword").required = false;
+    document.getElementById("employeePassword").placeholder =
+        "Leave blank to keep the current password";
+    document.getElementById("passwordHelp").textContent =
+        "Enter a new password only if you want to reset the employee's sign-in password.";
 
     try {
         const response = await apiFetch(`${API_URL}/${encodeURIComponent(id)}`);
@@ -2386,7 +2595,7 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#183b68">
-    <title>Admin Sign In | Nexora Workforce Suite</title>
+    <title>Sign In | Nexora Workforce Suite</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="signin-page">
@@ -2394,9 +2603,9 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
     <section class="signin-card" aria-labelledby="signinTitle">
         <div class="signin-brand" aria-hidden="true">N</div>
         <p class="eyebrow signin-eyebrow">NEXORA PEOPLE OPS</p>
-        <h1 id="signinTitle">Admin sign in</h1>
+        <h1 id="signinTitle">Workforce sign in</h1>
         <p class="signin-description">
-            Sign in to securely manage workforce records and departments.
+            Sign in with your administrator account or employee email and password.
         </p>
 
         <p id="signinMessage" class="signin-message" role="alert" aria-live="polite"></p>
@@ -2416,7 +2625,7 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\main\resources\st
             <button type="submit" id="signinButton" disabled>Sign in</button>
         </form>
 
-        <p class="signin-footer">Authorized administrators only</p>
+        <p class="signin-footer">Access is based on your assigned role.</p>
     </section>
 </main>
 <script src="signin.js"></script>
@@ -2869,6 +3078,29 @@ tbody tr:hover {
     font-size: 13px;
 }
 
+.employee-profile {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 0;
+}
+
+.employee-profile div {
+    padding: 14px;
+    border-radius: 8px;
+    background: #f7f9fc;
+}
+
+.employee-profile dt {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.employee-profile dd {
+    margin: 6px 0 0;
+    font-weight: 600;
+}
+
 @media (max-width: 650px) {
     form {
         grid-template-columns: 1fr;
@@ -2902,9 +3134,12 @@ FILE: D:\sakhawat code\javaLearning\nexora-workforce-suite\src\test\java\com\nex
 package com.nexora.workforce;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -2929,8 +3164,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -2940,7 +3176,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
         "nexora.security.password=change-me"
 })
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(roles = "ADMIN")
 class NexoraWorkforceSuiteApplicationTests {
 
     @Autowired
@@ -2960,6 +3196,9 @@ class NexoraWorkforceSuiteApplicationTests {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Test
     @WithAnonymousUser
@@ -2989,6 +3228,145 @@ class NexoraWorkforceSuiteApplicationTests {
         mockMvc.perform(formLogin().user("admin").password("change-me"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"));
+    }
+
+    @Test
+    @Transactional
+    @WithAnonymousUser
+    void employeeCanSignInWithEmailAndStoredPassword() throws Exception {
+        Employee employee = new Employee();
+        employee.setFirstName("Employee");
+        employee.setLastName("Account");
+        employee.setEmail("account-" + UUID.randomUUID() + "@example.com");
+        employee.setPasswordHash(passwordEncoder.encode("employee-password"));
+        employeeRepository.saveAndFlush(employee);
+
+        mockMvc.perform(formLogin()
+                        .user(employee.getEmail())
+                        .password("employee-password"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(username = "employee@example.com", roles = "EMPLOYEE")
+    void employeeCanOnlyReadTheEmployeeCountAndTheirOwnProfile() throws Exception {
+        Employee ownEmployee = new Employee();
+        ownEmployee.setFirstName("Own");
+        ownEmployee.setLastName("Account");
+        ownEmployee.setEmail("employee@example.com");
+        ownEmployee.setPasswordHash("{noop}employee-password");
+        employeeRepository.saveAndFlush(ownEmployee);
+
+        Employee otherEmployee = new Employee();
+        otherEmployee.setFirstName("Other");
+        otherEmployee.setLastName("Employee");
+        otherEmployee.setEmail("other-" + UUID.randomUUID() + "@example.com");
+        employeeRepository.saveAndFlush(otherEmployee);
+
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("EMPLOYEE"));
+        mockMvc.perform(get("/api/employees/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(employeeRepository.count()));
+        mockMvc.perform(get("/api/employees/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("employee@example.com"))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist());
+        mockMvc.perform(get("/api/employees"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/employees/search"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/employees/{id}", otherEmployee.getId()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/departments"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/employee-registration.html"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/employees")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/employees/{id}", otherEmployee.getId())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/employees/{id}", otherEmployee.getId())
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/departments")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Employee Restricted\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Transactional
+    void adminCanReadAllEmployeeRecordsAndCount() throws Exception {
+        Employee employee = new Employee();
+        employee.setFirstName("Admin");
+        employee.setLastName("Visible");
+        employee.setEmail("admin-visible-" + UUID.randomUUID() + "@example.com");
+        employeeRepository.saveAndFlush(employee);
+
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+        mockMvc.perform(get("/api/employees"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.email == '" + employee.getEmail() + "')]")
+                        .isNotEmpty());
+        mockMvc.perform(get("/api/employees/{id}", employee.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(employee.getEmail()));
+        mockMvc.perform(get("/api/employees/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(employeeRepository.count()));
+    }
+
+    @Test
+    @Transactional
+    void adminCanCreateEmployeeWithEncodedSignInPassword() throws Exception {
+        String email = "new-employee-" + UUID.randomUUID() + "@example.com";
+        String request = objectMapper.writeValueAsString(java.util.Map.of(
+                "firstName", "New",
+                "lastName", "Employee",
+                "email", email,
+                "password", "employee-password"));
+
+        var result = mockMvc.perform(post("/api/employees")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist())
+                .andReturn();
+
+        Long employeeId = objectMapper.readTree(
+                result.getResponse().getContentAsString()).get("id").asLong();
+        Employee savedEmployee = employeeRepository.findById(employeeId).orElseThrow();
+        assertTrue(
+                passwordEncoder.matches("employee-password", savedEmployee.getPasswordHash()));
+        assertNotEquals(
+                "employee-password", savedEmployee.getPasswordHash());
+    }
+
+    @Test
+    void employeeCreateRequestValidationReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/employees")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"not-an-email\",\"password\":\"short\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation failed"))
+                .andExpect(jsonPath("$.fields.firstName").exists())
+                .andExpect(jsonPath("$.fields.password").exists());
     }
 
     @Test
@@ -3162,6 +3540,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.nexora.workforce.dto.EmployeeDepartmentHistoryResponseDTO;
 import com.nexora.workforce.dto.EmployeePageResponseDTO;
 import com.nexora.workforce.dto.EmployeeRequestDTO;
 import com.nexora.workforce.dto.EmployeeResponseDTO;
@@ -3170,6 +3549,7 @@ import com.nexora.workforce.entity.Department;
 import com.nexora.workforce.entity.Employee;
 import com.nexora.workforce.entity.EmployeeDepartmentHistory;
 import com.nexora.workforce.exception.DuplicateResourceException;
+import com.nexora.workforce.exception.ResourceNotFoundException;
 import com.nexora.workforce.repository.DepartmentRepository;
 import com.nexora.workforce.repository.EmployeeDepartmentHistoryRepository;
 import com.nexora.workforce.repository.EmployeeRepository;
@@ -3183,6 +3563,7 @@ import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -3200,6 +3581,9 @@ class EmployeeServiceTest {
 
     @Mock
     private EmployeeDepartmentHistoryRepository historyRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private EmployeeService employeeService;
@@ -3256,6 +3640,25 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void storesEmployeePasswordsAsEncodedHashes() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setEmail("ada@example.com");
+        request.setPassword("employee-password");
+        when(passwordEncoder.encode("employee-password"))
+                .thenReturn("{bcrypt}encoded-password");
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        employeeService.createEmployee(request);
+
+        ArgumentCaptor<Employee> employeeCaptor =
+                ArgumentCaptor.forClass(Employee.class);
+        verify(employeeRepository).save(employeeCaptor.capture());
+        assertEquals("{bcrypt}encoded-password",
+                employeeCaptor.getValue().getPasswordHash());
+    }
+
+    @Test
     void rejectsAnEmployeeIdThatAlreadyExists() {
         EmployeeRequestDTO request = new EmployeeRequestDTO();
         request.setId(7L);
@@ -3265,6 +3668,77 @@ class EmployeeServiceTest {
                 () -> employeeService.createEmployee(request));
 
         verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void rejectsAnEmployeeIdThatWasProvidedButDoesNotExist() {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setId(7L);
+        when(employeeRepository.existsById(7L)).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> employeeService.createEmployee(request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
+        verifyNoInteractions(departmentRepository, historyRepository, passwordEncoder);
+    }
+
+    @Test
+    void looksUpEmployeeByIdAndMapsItsResponse() {
+        Employee employee = employee(12L, "ada@example.com");
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee));
+
+        EmployeeResponseDTO response = employeeService.getEmployeeById(12L);
+
+        assertEquals(12L, response.id());
+        assertEquals("ada@example.com", response.email());
+    }
+
+    @Test
+    void throwsWhenEmployeeIdDoesNotExist() {
+        when(employeeRepository.findById(404L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> employeeService.getEmployeeById(404L));
+    }
+
+    @Test
+    void returnsAllEmployeesAndTotalEmployeeCount() {
+        Employee employee = employee(12L, "ada@example.com");
+        when(employeeRepository.findAll()).thenReturn(List.of(employee));
+        when(employeeRepository.count()).thenReturn(1L);
+
+        List<EmployeeResponseDTO> response = employeeService.getAllEmployees();
+
+        assertEquals(1, response.size());
+        assertEquals("ada@example.com", response.get(0).email());
+        assertEquals(1L, employeeService.getEmployeeCount());
+        verify(employeeRepository).findAll();
+        verify(employeeRepository).count();
+    }
+
+    @Test
+    void returnsEmployeeProfileByEmail() {
+        Employee employee = employee(12L, "ada@example.com");
+        when(employeeRepository.findByEmailIgnoreCaseAndPasswordHashIsNotNull(
+                "ada@example.com"))
+                .thenReturn(Optional.of(employee));
+
+        EmployeeResponseDTO response =
+                employeeService.getEmployeeByEmail("ada@example.com");
+
+        assertEquals(12L, response.id());
+        assertEquals("ada@example.com", response.email());
+    }
+
+    @Test
+    void throwsWhenEmailHasNoEmployeeAccount() {
+        when(employeeRepository.findByEmailIgnoreCaseAndPasswordHashIsNotNull(
+                "missing@example.com"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> employeeService.getEmployeeByEmail("missing@example.com"));
     }
 
     @Test
@@ -3302,6 +3776,57 @@ class EmployeeServiceTest {
 
         assertThrows(DuplicateResourceException.class,
                 () -> employeeService.updateEmployee(7L, request));
+
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void updatesEmployeeAndLeavesPasswordUnchangedWhenNoNewPasswordIsProvided() {
+        Employee existing = employee(12L, "ada@example.com");
+        existing.setPasswordHash("{bcrypt}existing-hash");
+        EmployeeRequestDTO request = employeeRequest("Ada", "Byron", "ada@example.com");
+        request.setPhone("555-0100");
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(existing));
+        when(employeeRepository.existsByEmailIgnoreCaseAndIdNot("ada@example.com", 12L))
+                .thenReturn(false);
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        EmployeeResponseDTO response = employeeService.updateEmployee(12L, request);
+
+        assertEquals("Byron", response.lastName());
+        assertEquals("555-0100", response.phone());
+        assertEquals("{bcrypt}existing-hash", existing.getPasswordHash());
+        verify(passwordEncoder, never()).encode(any());
+        verify(employeeRepository).save(existing);
+    }
+
+    @Test
+    void updatesEmployeePasswordUsingPasswordEncoder() {
+        Employee existing = employee(12L, "ada@example.com");
+        EmployeeRequestDTO request = employeeRequest("Ada", "Lovelace", "ada@example.com");
+        request.setPassword("new-password");
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(existing));
+        when(employeeRepository.existsByEmailIgnoreCaseAndIdNot("ada@example.com", 12L))
+                .thenReturn(false);
+        when(passwordEncoder.encode("new-password")).thenReturn("{bcrypt}new-hash");
+        when(employeeRepository.save(any(Employee.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        employeeService.updateEmployee(12L, request);
+
+        assertEquals("{bcrypt}new-hash", existing.getPasswordHash());
+    }
+
+    @Test
+    void rejectsUpdateWhenEmailBelongsToAnotherEmployee() {
+        EmployeeRequestDTO request = employeeRequest("Ada", "Lovelace", "used@example.com");
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee(12L, "ada@example.com")));
+        when(employeeRepository.existsByEmailIgnoreCaseAndIdNot("used@example.com", 12L))
+                .thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class,
+                () -> employeeService.updateEmployee(12L, request));
 
         verify(employeeRepository, never()).save(any(Employee.class));
     }
@@ -3375,6 +3900,79 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void rejectsTransferDateBeforeHireDate() {
+        Employee employee = employee(12L, "ada@example.com");
+        employee.setHireDate(LocalDate.of(2020, 1, 1));
+        Department destination = new Department();
+        destination.setId(7L);
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee));
+        when(departmentRepository.findById(7L)).thenReturn(Optional.of(destination));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> employeeService.transferEmployeeEntity(
+                        12L, 7L, LocalDate.of(2019, 12, 31)));
+
+        verify(historyRepository, never()).save(any(EmployeeDepartmentHistory.class));
+        verify(employeeRepository, never()).save(any(Employee.class));
+    }
+
+    @Test
+    void mapsDepartmentHistoryForAnEmployee() {
+        Employee employee = employee(12L, "ada@example.com");
+        Department from = department(3L, "Operations");
+        Department to = department(7L, "Engineering");
+        EmployeeDepartmentHistory history = new EmployeeDepartmentHistory();
+        history.setId(21L);
+        history.setEmployee(employee);
+        history.setFromDepartment(from);
+        history.setToDepartment(to);
+        history.setEffectiveDate(LocalDate.of(2024, 1, 2));
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee));
+        when(historyRepository.findByEmployee_IdOrderByEffectiveDateAscIdAsc(12L))
+                .thenReturn(List.of(history));
+
+        List<EmployeeDepartmentHistoryResponseDTO> response =
+                employeeService.getDepartmentHistory(12L);
+
+        assertEquals(1, response.size());
+        assertEquals(21L, response.get(0).id());
+        assertEquals("Operations", response.get(0).fromDepartmentName());
+        assertEquals("Engineering", response.get(0).toDepartmentName());
+    }
+
+    @Test
+    void doesNotQueryHistoryWhenEmployeeDoesNotExist() {
+        when(employeeRepository.findById(404L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> employeeService.getDepartmentHistory(404L));
+
+        verifyNoInteractions(historyRepository);
+    }
+
+    @Test
+    void deletesEmployeeAndItsHistory() {
+        Employee employee = employee(12L, "ada@example.com");
+        when(employeeRepository.findById(12L)).thenReturn(Optional.of(employee));
+
+        employeeService.deleteEmployee(12L);
+
+        verify(historyRepository).deleteByEmployee_Id(12L);
+        verify(employeeRepository).delete(employee);
+    }
+
+    @Test
+    void doesNotDeleteHistoryWhenEmployeeDoesNotExist() {
+        when(employeeRepository.findById(404L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> employeeService.deleteEmployee(404L));
+
+        verifyNoInteractions(historyRepository);
+        verify(employeeRepository, never()).delete(any(Employee.class));
+    }
+
+    @Test
     void searchesEmployeesWithNormalizedNameAndPageMetadata() {
         Department department = new Department();
         department.setId(7L);
@@ -3408,6 +4006,40 @@ class EmployeeServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> employeeService.searchEmployees(null, null, 0, 101));
         verifyNoInteractions(employeeRepository);
+    }
+
+    @Test
+    void rejectsNegativePageAndZeroPageSizeBeforeQueryingRepository() {
+        assertThrows(IllegalArgumentException.class,
+                () -> employeeService.searchEmployees(null, null, -1, 10));
+        assertThrows(IllegalArgumentException.class,
+                () -> employeeService.searchEmployees(null, null, 0, 0));
+        verifyNoInteractions(employeeRepository);
+    }
+
+    private Employee employee(Long id, String email) {
+        Employee employee = new Employee();
+        employee.setId(id);
+        employee.setFirstName("Ada");
+        employee.setLastName("Lovelace");
+        employee.setEmail(email);
+        return employee;
+    }
+
+    private EmployeeRequestDTO employeeRequest(
+            String firstName, String lastName, String email) {
+        EmployeeRequestDTO request = new EmployeeRequestDTO();
+        request.setFirstName(firstName);
+        request.setLastName(lastName);
+        request.setEmail(email);
+        return request;
+    }
+
+    private Department department(Long id, String name) {
+        Department department = new Department();
+        department.setId(id);
+        department.setName(name);
+        return department;
     }
 }
 

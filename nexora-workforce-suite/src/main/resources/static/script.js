@@ -37,16 +37,16 @@ function apiFetch(url, options = {}) {
 document.addEventListener("DOMContentLoaded", function() {
     initializeLogoutForm();
     if (employeeTable) {
-        loadEmployees(0);
-        if (new URLSearchParams(window.location.search).has("updated")) {
-            showMessage("Employee updated successfully!");
-        }
+        initializeDashboard();
     }
-    loadDepartments().then(function() {
-        if (form) {
+    if (form) {
+        loadDepartments().then(function() {
             initializeEmployeeForm();
-        }
-    });
+        });
+        const passwordInput = document.getElementById("employeePassword");
+        passwordInput.required =
+            !new URLSearchParams(window.location.search).has("id");
+    }
 
     function initializeLogoutForm() {
         const logoutToken = document.getElementById("logoutCsrfToken");
@@ -71,6 +71,70 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 });
+
+async function initializeDashboard() {
+    try {
+        const response = await apiFetch("/api/auth/me");
+        if (!response.ok) {
+            throw new Error("Unable to load your account details.");
+        }
+        const account = await response.json();
+        if (account.role === "ADMIN") {
+            document.getElementById("adminDashboard").hidden = false;
+            document.getElementById("adminNavigation")
+                .querySelector("a[href='employee-registration.html']").hidden = false;
+            loadEmployees(0);
+            loadDepartments();
+            if (new URLSearchParams(window.location.search).has("updated")) {
+                showMessage("Employee updated successfully!");
+            }
+            return;
+        }
+        if (account.role !== "EMPLOYEE") {
+            throw new Error("Your account does not have a supported role.");
+        }
+
+        document.getElementById("adminNavigation")
+            .querySelector("a[href='employee-registration.html']").hidden = true;
+        document.getElementById("adminDashboard").hidden = true;
+        document.getElementById("employeeProfile").hidden = false;
+        document.getElementById("employeeCountLabel").textContent =
+            "Total employees";
+
+        const [countResponse, profileResponse] = await Promise.all([
+            apiFetch(`${API_URL}/count`),
+            apiFetch(`${API_URL}/me`)
+        ]);
+        if (!countResponse.ok || !profileResponse.ok) {
+            throw new Error("Unable to load your employee information.");
+        }
+        const [count, employee] = await Promise.all([
+            countResponse.json(),
+            profileResponse.json()
+        ]);
+        document.getElementById("totalEmployees").textContent = count;
+        displayEmployeeProfile(employee);
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+function displayEmployeeProfile(employee) {
+    const values = {
+        profileId: employee.id,
+        profileName: `${employee.firstName} ${employee.lastName}`,
+        profileEmail: employee.email,
+        profilePhone: employee.phone || "Not set",
+        profileDepartment: employee.departmentName || "Not assigned",
+        profileJobTitle: employee.jobTitle || "Not set",
+        profileSalary: formatSalary(employee.salary),
+        profileHireDate: employee.hireDate || "Not set",
+        profileStatus: employee.status || "Not set"
+    };
+    Object.keys(values).forEach(function(id) {
+        document.getElementById(id).textContent = values[id];
+    });
+}
 
 if (employeeSearchForm) {
     employeeSearchForm.addEventListener("submit", searchEmployees);
@@ -117,6 +181,10 @@ async function submitEmployeeForm(event) {
         hireDate: document.getElementById("hireDate").value || null,
         status: document.getElementById("status").value
     };
+    const password = document.getElementById("employeePassword").value;
+    if (password) {
+        employee.password = password;
+    }
 
     try {
         const response = await apiFetch(
@@ -154,6 +222,11 @@ async function initializeEmployeeForm() {
     if (!id) {
         return;
     }
+    document.getElementById("employeePassword").required = false;
+    document.getElementById("employeePassword").placeholder =
+        "Leave blank to keep the current password";
+    document.getElementById("passwordHelp").textContent =
+        "Enter a new password only if you want to reset the employee's sign-in password.";
 
     try {
         const response = await apiFetch(`${API_URL}/${encodeURIComponent(id)}`);

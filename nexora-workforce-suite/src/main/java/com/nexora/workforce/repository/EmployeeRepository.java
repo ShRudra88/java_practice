@@ -41,4 +41,6 @@ public interface EmployeeRepository
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+
+    Optional<Employee> findByEmailIgnoreCaseAndPasswordHashIsNotNull(String email);
 }

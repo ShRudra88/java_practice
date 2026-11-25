@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public class EmployeeRequestDTO {
@@ -23,6 +24,9 @@ public class EmployeeRequestDTO {
     @Email
     @NotBlank
     private String email;
+
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    private String password;
 
     private String phone;
 
@@ -66,6 +70,14 @@ public class EmployeeRequestDTO {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getPhone() {
